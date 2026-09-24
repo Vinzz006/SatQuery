@@ -31,13 +31,14 @@ class ChangeVQASpecialist(BaseSpecialistModel):
         meta_a: ImageMetadata,
         img_b: np.ndarray,
         meta_b: ImageMetadata,
-        question: str
+        question: str,
+        threshold_factor: float = 1.2
     ) -> Dict[str, Any]:
         start_time = time.time()
         self.load()
 
         # Step 1: Run Change Detection specialist for objective physical metrics
-        cd_result = self.change_detector.predict(img_a, meta_a, img_b, meta_b)
+        cd_result = self.change_detector.predict(img_a, meta_a, img_b, meta_b, threshold_factor=threshold_factor)
         stats = cd_result["statistics"]
         pct = stats["changed_percentage"]
         primary_type = stats["primary_change_type"]

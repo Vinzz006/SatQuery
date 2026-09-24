@@ -59,6 +59,10 @@ async def list_sample_imagery():
     """
     sample_dir = settings.SAMPLE_DIR
     sample_files = [
+        ("isro_sdsc_optical.tif", "ISRO SDSC Sriharikota GeoTIFF (EPSG:4326)"),
+        ("isro_sdsc_sar.tif", "Sentinel-1 SAR Sriharikota GeoTIFF"),
+        ("isro_sdsc_t1_2024.tif", "ISRO SDSC Epoch 2024 GeoTIFF"),
+        ("isro_sdsc_t2_2026.tif", "ISRO SDSC Epoch 2026 GeoTIFF"),
         ("sample_vqa_optical.png", "Urban Harbor Optical Scene"),
         ("sample_grounding_fields.png", "Agricultural River Basin"),
         ("sample_change_2024_t1.png", "Pre-Expansion Epoch (2024)"),

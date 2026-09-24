@@ -2,20 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { ImageMetadata, AnalyzeResponse } from '../types';
 import { SplitImageViewer } from '../components/SplitImageViewer';
+import { GeoMapViewer } from '../components/GeoMapViewer';
 import { GroundedAnswerCard } from '../components/GroundedAnswerCard';
 import { ExecutionTraceViewer } from '../components/ExecutionTraceViewer';
 import {
   Upload,
-  Sparkles,
   Play,
-  RotateCcw,
   Layers,
-  HelpCircle,
   AlertCircle,
   FileQuestion,
   Loader2,
-  Bookmark,
-  CheckCircle2
+  Globe,
+  SplitSquareVertical,
+  Sliders,
+  ChevronDown,
+  ChevronUp,
+  Cpu,
+  Sparkles
 } from 'lucide-react';
 
 export const WorkspacePage: React.FC = () => {
@@ -28,14 +31,20 @@ export const WorkspacePage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useAdaptedModel, setUseAdaptedModel] = useState<boolean>(true);
 
+  // Phase 11 Advanced Controls & View Mode
+  const [viewMode, setViewMode] = useState<'slider' | 'map'>('slider');
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const [thresholdFactor, setThresholdFactor] = useState<number>(1.2);
+  const [sarFilterSize, setSarFilterSize] = useState<number>(5);
+
   // Load sample assets on mount
   useEffect(() => {
     api.getSampleImagery()
       .then((samples) => {
         setSampleImagery(samples);
         // Default to Demo Scenario 4 (Bi-temporal Change) initially
-        const t1 = samples.find(s => s.filename.includes('2024_t1'));
-        const t2 = samples.find(s => s.filename.includes('2026_t2'));
+        const t1 = samples.find(s => s.filename.includes('2024')) || samples[0];
+        const t2 = samples.find(s => s.filename.includes('2026')) || samples[1];
         if (t1 && t2) {
           setImages([t1, t2]);
           setQuery('What changed between these two images?');
@@ -53,8 +62,9 @@ export const WorkspacePage: React.FC = () => {
     setAnalysisResult(null);
 
     if (scenario === 1) {
-      // Demo 1: Single Image VQA
-      const opt = sampleImagery.find(s => s.filename.includes('vqa_optical'));
+      // Demo 1: Single Image VQA (Prefers true GeoTIFF)
+      const opt = sampleImagery.find(s => s.filename === 'isro_sdsc_optical.tif') ||
+                  sampleImagery.find(s => s.filename.includes('vqa_optical'));
       if (opt) setImages([opt]);
       setQuery('What type of land cover dominates this region?');
     } else if (scenario === 2) {
@@ -64,19 +74,23 @@ export const WorkspacePage: React.FC = () => {
       setQuery('Highlight the water body.');
     } else if (scenario === 3) {
       // Demo 3: Captioning
-      const opt = sampleImagery.find(s => s.filename.includes('vqa_optical'));
+      const opt = sampleImagery.find(s => s.filename.includes('optical'));
       if (opt) setImages([opt]);
       setQuery('Describe this satellite image.');
     } else if (scenario === 4) {
-      // Demo 4: Bi-temporal Change
-      const t1 = sampleImagery.find(s => s.filename.includes('2024_t1'));
-      const t2 = sampleImagery.find(s => s.filename.includes('2026_t2'));
+      // Demo 4: Bi-temporal Change (Prefers true GeoTIFFs)
+      const t1 = sampleImagery.find(s => s.filename === 'isro_sdsc_t1_2024.tif') ||
+                 sampleImagery.find(s => s.filename.includes('2024_t1'));
+      const t2 = sampleImagery.find(s => s.filename === 'isro_sdsc_t2_2026.tif') ||
+                 sampleImagery.find(s => s.filename.includes('2026_t2'));
       if (t1 && t2) setImages([t1, t2]);
       setQuery('What changed between these two images?');
     } else if (scenario === 5) {
-      // Demo 5: Optical + SAR Fusion
-      const opt = sampleImagery.find(s => s.filename.includes('optical_cloudy'));
-      const sar = sampleImagery.find(s => s.filename.includes('sar_backscatter'));
+      // Demo 5: Optical + SAR Fusion (Prefers true GeoTIFFs)
+      const opt = sampleImagery.find(s => s.filename === 'isro_sdsc_optical.tif') ||
+                  sampleImagery.find(s => s.filename.includes('optical'));
+      const sar = sampleImagery.find(s => s.filename === 'isro_sdsc_sar.tif') ||
+                  sampleImagery.find(s => s.filename.includes('sar'));
       if (opt && sar) setImages([opt, sar]);
       setQuery('Use both images to identify built-up regions.');
     }
@@ -90,7 +104,6 @@ export const WorkspacePage: React.FC = () => {
     try {
       const uploadedMetas = await api.uploadImages(Array.from(e.target.files));
       setImages(uploadedMetas);
-      // Auto-suggest query based on upload count
       if (uploadedMetas.length === 2) {
         setQuery('What changed between these two images?');
       } else {
@@ -118,7 +131,15 @@ export const WorkspacePage: React.FC = () => {
 
     try {
       const imageIds = images.map(img => img.filename);
-      const res = await api.analyze(query, imageIds, useAdaptedModel);
+      const res = await api.analyze(
+        query,
+        imageIds,
+        useAdaptedModel,
+        {
+          threshold_factor: thresholdFactor,
+          sar_filter_size: sarFilterSize
+        }
+      );
       setAnalysisResult(res);
     } catch (err: any) {
       setErrorMessage(err.response?.data?.detail || "Analysis failed. Please inspect backend logs.");
@@ -149,7 +170,7 @@ export const WorkspacePage: React.FC = () => {
             onClick={() => loadDemoScenario(1)}
             className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 transition-all"
           >
-            Demo 1: VQA
+            Demo 1: VQA (GeoTIFF)
           </button>
           <button
             onClick={() => loadDemoScenario(2)}
@@ -167,13 +188,13 @@ export const WorkspacePage: React.FC = () => {
             onClick={() => loadDemoScenario(4)}
             className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 transition-all font-semibold"
           >
-            Demo 4: Change
+            Demo 4: Change (GeoTIFF)
           </button>
           <button
             onClick={() => loadDemoScenario(5)}
             className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 transition-all"
           >
-            Demo 5: Opt+SAR
+            Demo 5: Opt+SAR (GeoTIFF)
           </button>
         </div>
       </div>
@@ -207,8 +228,8 @@ export const WorkspacePage: React.FC = () => {
             <label className="border border-dashed border-slate-700 hover:border-cyan-500/60 rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer bg-slate-950/40 transition-colors">
               <Upload className="w-6 h-6 text-slate-400 animate-bounce" />
               <div className="text-center font-mono text-xs text-slate-300">
-                <span>Drop GeoTIFF, TIFF, or Benchmark imagery</span>
-                <p className="text-[10px] text-slate-500 mt-0.5">Supports 1 single image or 2 paired images (Temporal / Optical+SAR)</p>
+                <span>Drop GeoTIFF (.tif) or Benchmark imagery</span>
+                <p className="text-[10px] text-slate-500 mt-0.5">EPSG:4326 geospatial metadata preserved</p>
               </div>
               <input
                 type="file"
@@ -231,6 +252,11 @@ export const WorkspacePage: React.FC = () => {
                       <span className="text-slate-200 truncate font-sans text-xs">{img.original_name}</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {img.has_geotiff_metadata && (
+                        <span className="px-1 py-0.5 rounded bg-indigo-950 text-indigo-300 text-[9px] border border-indigo-800">
+                          GeoTIFF
+                        </span>
+                      )}
                       <span className="px-1.5 py-0.5 rounded bg-slate-950 text-cyan-400 text-[10px] border border-cyan-900">
                         {img.modality.toUpperCase()}
                       </span>
@@ -291,8 +317,73 @@ export const WorkspacePage: React.FC = () => {
                   onChange={(e) => setUseAdaptedModel(e.target.checked)}
                   className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
                 />
-                <span>Use Remote-Sensing Adapted Model (EuroSAT Fine-Tuned)</span>
+                <span className="flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                  Neural Checkpoint Active (EuroSAT Head)
+                </span>
               </label>
+            </div>
+
+            {/* Advanced Geospatial Parameters Accordion */}
+            <div className="border-t border-slate-800 pt-2">
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center justify-between w-full text-xs font-mono text-slate-400 hover:text-cyan-300 transition-colors py-1"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                  Advanced Geospatial Parameters
+                </span>
+                {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {showAdvanced && (
+                <div className="mt-2.5 p-3 rounded-lg bg-slate-950/70 border border-slate-800/80 space-y-3 text-xs font-mono">
+                  {/* Sensitivity Factor Slider */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Change Threshold Factor:</span>
+                      <span className="text-cyan-400 font-bold">{thresholdFactor.toFixed(2)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.8"
+                      max="1.8"
+                      step="0.05"
+                      value={thresholdFactor}
+                      onChange={(e) => setThresholdFactor(parseFloat(e.target.value))}
+                      className="w-full accent-cyan-400 h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-500">
+                      <span>High Sensitivity (0.8x)</span>
+                      <span>Conservative (1.8x)</span>
+                    </div>
+                  </div>
+
+                  {/* SAR Filter Kernel */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-slate-300">
+                      <span>SAR Lee Filter Kernel:</span>
+                      <span className="text-cyan-400 font-bold">{sarFilterSize}x{sarFilterSize}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      {[3, 5, 7].map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => setSarFilterSize(k)}
+                          className={`flex-1 py-1 rounded text-xs border ${
+                            sarFilterSize === k
+                              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 font-bold'
+                              : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+                          }`}
+                        >
+                          {k}x{k}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Analyze Button */}
@@ -332,11 +423,46 @@ export const WorkspacePage: React.FC = () => {
         {/* Right Column: Visual HUD & Results (7 Cols) */}
         <div className="lg:col-span-7 space-y-4">
           
-          {/* Main Visualizer */}
-          <SplitImageViewer
-            images={images}
-            evidence={analysisResult?.evidence || []}
-          />
+          {/* View Mode Switcher Header: Split Slider vs Leaflet GIS Map */}
+          <div className="glass-panel px-4 py-2 rounded-xl border border-slate-800 flex items-center justify-between text-xs font-mono">
+            <span className="text-slate-400 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              VISUALIZATION ENGINE
+            </span>
+            <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800">
+              <button
+                onClick={() => setViewMode('slider')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-medium transition-all ${
+                  viewMode === 'slider' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <SplitSquareVertical className="w-3.5 h-3.5" />
+                Split Slider View
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-medium transition-all ${
+                  viewMode === 'map' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                Leaflet GIS Map
+              </button>
+            </div>
+          </div>
+
+          {/* Dynamic View: Split Slider or Leaflet GIS Map */}
+          {viewMode === 'slider' ? (
+            <SplitImageViewer
+              images={images}
+              evidence={analysisResult?.evidence || []}
+            />
+          ) : (
+            <GeoMapViewer
+              images={images}
+              evidence={analysisResult?.evidence || []}
+            />
+          )}
 
           {/* Grounded Result Card */}
           {analysisResult && (

@@ -133,7 +133,8 @@ class AgentController:
             stats = res["statistics"]
 
         elif task_type == TaskType.CHANGE_VQA:
-            res = specialist.predict(arrays[0], metas[0], arrays[1], metas[1], query)
+            threshold_factor = parameters.get("threshold_factor", 1.2)
+            res = specialist.predict(arrays[0], metas[0], arrays[1], metas[1], query, threshold_factor=threshold_factor)
             answer = res["answer"]
             confidence = res["confidence"]
             conf_label = res["confidence_label"]

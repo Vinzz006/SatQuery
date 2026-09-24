@@ -26,9 +26,12 @@ Unlike generic vision-language chatbots that suffer from severe geographic hallu
 ## 2. Core Capabilities
 
 * **Single-Image VQA**: Visual question answering on land cover classes, object existence, infrastructure counts, and spatial distributions with calibrated softmax confidence.
+* **Live PyTorch Neural Checkpoint Inference**: Direct execution of fine-tuned EuroSAT neural weights (`adapted_rs_head.pt`) with real-time neural logits and class predictions.
+* **True Geospatial GeoTIFF Engine (EPSG:4326)**: Ingests and generates georeferenced GeoTIFFs with real Coordinate Reference Systems (CRS) and affine bounds centered over the ISRO Satish Dhawan Space Centre (SDSC SHAR, Sriharikota, India).
+* **Interactive Leaflet GIS Map Viewer**: Integrated GIS mapping with high-resolution Esri Satellite imagery, Dark Matter GIS, real-world raster overlays, and a live cursor Latitude/Longitude HUD.
 * **Remote-Sensing Captioning**: Holistic LULC descriptive summaries detailing spectral, spatial, and textural landscape compositions.
 * **Text-Guided Visual Grounding**: Natural referring expression localization (e.g. "Highlight the water body") into bounding boxes with confidence chips, binary masks, and visual overlays.
-* **Bi-Temporal Change Detection & Change-VQA**: Multi-epoch alignment, Radiometric Change Vector Analysis (CVA), adaptive Otsu thresholding, quantified percentage changes, and anti-hallucination Q&A.
+* **Bi-Temporal Change Detection & Change-VQA**: Multi-epoch alignment, Radiometric Change Vector Analysis (CVA), adaptive Otsu thresholding with dynamic sensitivity slider controls, quantified percentage changes, and anti-hallucination Q&A.
 * **Optical + SAR Cross-Modal Analysis**: Synergistic fusion combining optical spectral reflectance with cloud-penetrating SAR microwave backscatter to detect structural footprints obscured by clouds.
 * **Remote-Sensing Adaptation Pipeline**: Reproducible fine-tuning and evaluation workflow (`backend/adaptation/train.py`) adapted on the EuroSAT benchmark.
 * **Auditable Telemetry**: Real-time execution trace displaying observable milestones with millisecond latency.
@@ -219,11 +222,13 @@ tests/test_validation.py ....            [100%]
 
 The web interface on `/workspace` contains instant quick-launch buttons for all 5 required ISRO scenarios:
 
-### Demo 1: Single-Image VQA
-1. Click **Demo 1: VQA** (loads high-resolution urban harbor optical scene).
-2. Query: *"What type of land cover dominates this region?"*
-3. Click **Execute Analysis & Trace**.
-4. Result: Grounded classification (*Dense Urban / Built-up*), calibrated confidence (*87%*), and complete observable execution trace.
+### Demo 1: Single-Image VQA (GeoTIFF EPSG:4326)
+1. Click **Demo 1: VQA (GeoTIFF)** (loads real georeferenced GeoTIFF centered at ISRO SDSC Sriharikota, India).
+2. Switch to **Leaflet GIS Map** to inspect the raster overlaid at exact coordinates (~13.72° N, ~80.23° E) with the live Latitude/Longitude cursor HUD.
+3. Query: *"What type of land cover dominates this region?"*
+4. Ensure **Neural Checkpoint Active (EuroSAT Head)** is checked.
+5. Click **Execute Analysis & Trace**.
+6. Result: Direct neural inference through `adapted_rs_head.pt` yields classification (*Dense Urban / Built-up / Residential*), calibrated confidence (*87%*), and complete observable execution trace.
 
 ### Demo 2: Text-Guided Grounding
 1. Click **Demo 2: Grounding** (loads agricultural river basin scene).
@@ -237,14 +242,15 @@ The web interface on `/workspace` contains instant quick-launch buttons for all 
 3. Click **Execute Analysis & Trace**.
 4. Result: Detailed technical description detailing urban corridors, agricultural plots, and shoreline boundaries.
 
-### Demo 4: Bi-Temporal Change Detection & Change VQA
-1. Click **Demo 4: Change** (loads 2024 Pre-expansion and 2026 Post-expansion pair).
+### Demo 4: Bi-Temporal Change Detection & Change VQA (GeoTIFF)
+1. Click **Demo 4: Change (GeoTIFF)** (loads 2024 Pre-expansion and 2026 Post-expansion GeoTIFF pair).
 2. Query: *"What changed between these two images?"*
-3. Click **Execute Analysis & Trace**.
-4. Result: Color-coded change map, change overlay registered onto Epoch B, quantitative change statistics (*+14.7% change, Built-up infrastructure expansion*), and grounded answer.
+3. Optional: Expand **Advanced Geospatial Parameters** to adjust the **Change Threshold Factor** slider (0.8x to 1.8x).
+4. Click **Execute Analysis & Trace**.
+5. Result: Color-coded change map, change overlay registered onto Epoch B, quantitative change statistics (*+18.41% change, Vegetation recovery / Built-up*), and grounded answer. Click **Download PDF Report** to view the generated PDF.
 
-### Demo 5: Optical + SAR Cross-Modal Fusion
-1. Click **Demo 5: Opt+SAR** (loads cloudy optical scene + co-registered Sentinel-1 SAR scene).
+### Demo 5: Optical + SAR Cross-Modal Fusion (GeoTIFF)
+1. Click **Demo 5: Opt+SAR (GeoTIFF)** (loads cloudy optical scene + co-registered Sentinel-1 SAR scene).
 2. Query: *"Use both images to identify built-up regions."*
 3. Click **Execute Analysis & Trace**.
 4. Result: Optical-SAR false-color composite, SAR microwave backscatter corner-reflector detection, and cloud-penetrating built-up footprint extraction.
