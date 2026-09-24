@@ -1,13 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnalyzeResponse } from '../types';
 import { api } from '../services/api';
-import { Sparkles, Download, FileText, CheckCircle, ShieldAlert, Activity, BarChart2 } from 'lucide-react';
+import {
+  Sparkles,
+  Download,
+  FileText,
+  Activity,
+  BarChart2,
+  Volume2,
+  VolumeX,
+  Radio
+} from 'lucide-react';
 
 interface Props {
   analysis: AnalyzeResponse;
 }
 
 export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const confValue = analysis.confidence ? Math.round(analysis.confidence * 100) : 0;
 
   // Determine badge color based on calibrated confidence
@@ -16,6 +26,32 @@ export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
     : confValue >= 70
     ? 'text-cyan-400 bg-cyan-950 border-cyan-800'
     : 'text-amber-400 bg-amber-950 border-amber-800';
+
+  const toggleSpeech = () => {
+    if (!('speechSynthesis' in window)) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(analysis.answer);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   return (
     <div className="glass-panel-glow rounded-xl p-5 border border-cyan-500/30 flex flex-col gap-4">
@@ -32,18 +68,48 @@ export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
           </span>
         </div>
 
-        {/* Confidence chip */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 font-mono">Calibrated Confidence:</span>
-          <div className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold border flex items-center gap-1.5 ${confColor}`}>
-            <Activity className="w-3.5 h-3.5" />
-            <span>{confValue > 0 ? `${confValue}%` : 'Not Available'}</span>
+        {/* Confidence chip & Audio Briefing Button */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={toggleSpeech}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono transition-all border ${
+              isSpeaking
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/70 animate-pulse shadow-sm shadow-rose-500/20'
+                : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 border-slate-800 hover:border-cyan-700'
+            }`}
+            title={isSpeaking ? 'Stop Audio Briefing' : 'Listen to Mission Assessment via Text-to-Speech'}
+          >
+            {isSpeaking ? (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                <span>Stop Voice</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Audio Briefing</span>
+              </>
+            )}
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400 font-mono hidden sm:inline">Confidence:</span>
+            <div className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold border flex items-center gap-1.5 ${confColor}`}>
+              <Activity className="w-3.5 h-3.5" />
+              <span>{confValue > 0 ? `${confValue}%` : 'Not Available'}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Grounded Natural Language Answer */}
       <div className="bg-slate-900/80 p-4 rounded-lg border border-slate-800 text-slate-100 font-sans leading-relaxed text-sm">
+        {isSpeaking && (
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-800/80 text-xs font-mono text-cyan-400">
+            <Radio className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+            <span className="tracking-wider uppercase font-semibold">Broadcasting Mission Control Briefing...</span>
+          </div>
+        )}
         <p className="font-medium text-cyan-50 mb-1">
           {analysis.answer}
         </p>

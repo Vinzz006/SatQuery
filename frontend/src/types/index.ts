@@ -6,6 +6,7 @@ export type TaskType =
   | 'change_vqa'
   | 'optical_sar_analysis'
   | 'spectral_index'
+  | 'band_composite'
   | 'general_remote_sensing_analysis';
 
 export type ModalityType = 'optical' | 'sar' | 'multispectral' | 'unknown';
@@ -29,7 +30,7 @@ export interface ImageMetadata {
 
 export interface EvidenceArtifact {
   id: string;
-  type: string; // 'change_map' | 'mask' | 'overlay' | 'bounding_box' | 'fused_composite' | 'spectral_index'
+  type: string; // 'change_map' | 'mask' | 'overlay' | 'bounding_box' | 'fused_composite' | 'spectral_index' | 'timelapse_animation'
   title: string;
   description: string;
   url: string;

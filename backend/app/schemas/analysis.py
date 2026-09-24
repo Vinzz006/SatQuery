@@ -11,6 +11,7 @@ class TaskType(str, Enum):
     CHANGE_VQA = "change_vqa"
     OPTICAL_SAR_ANALYSIS = "optical_sar_analysis"
     SPECTRAL_INDEX = "spectral_index"
+    BAND_COMPOSITE = "band_composite"
     GENERAL_REMOTE_SENSING_ANALYSIS = "general_remote_sensing_analysis"
 
 

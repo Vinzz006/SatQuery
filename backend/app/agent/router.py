@@ -18,6 +18,17 @@ class QueryRouter:
         # Route single image workflows
         if num_images == 1:
             if any(w in q_lower for w in [
+                "false color", "false-color", "color infrared", "cir", "color-infrared",
+                "band composite", "infrared composite", "agriculture composite", "moisture composite",
+                "render cir", "show cir"
+            ]):
+                return (
+                    TaskType.BAND_COMPOSITE,
+                    "composite",
+                    "Single image inquiry with multi-spectral band composite synthesis intent -> Routed to Multi-Spectral Composite Specialist (CIR/Agriculture)."
+                )
+
+            elif any(w in q_lower for w in [
                 "ndvi", "ndwi", "ndbi", "vegetation index", "water index", "built-up index",
                 "spectral index", "biomass index", "canopy health", "spectral heatmap",
                 "compute ndvi", "compute ndwi", "compute ndbi", "surface water index"

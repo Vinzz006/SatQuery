@@ -7,6 +7,7 @@ from app.agent.registry import registry
 from app.agent.router import QueryRouter
 from app.agent.trace import ExecutionTraceCollector
 from app.remote_sensing.geotiff import extract_raster_metadata
+from app.evidence.timelapse import generate_change_timelapse
 from app.schemas.analysis import (
     AnalyzeRequest, AnalyzeResponse, TaskType, ModalityType,
     ImageMetadata, EvidenceArtifact
@@ -161,6 +162,14 @@ class AgentController:
             evidence_list.extend(res["evidence"])
             stats = res["statistics"]
 
+        elif task_type == TaskType.BAND_COMPOSITE:
+            res = specialist.predict(arrays[0], metas[0], query)
+            answer = res["answer"]
+            confidence = res["confidence"]
+            conf_label = res["confidence_label"]
+            evidence_list.extend(res["evidence"])
+            stats = res["statistics"]
+
         elif task_type == TaskType.CHANGE_DETECTION:
             threshold_factor = parameters.get("threshold_factor", 1.2)
             res = specialist.predict(arrays[0], metas[0], arrays[1], metas[1], threshold_factor=threshold_factor)
@@ -169,6 +178,17 @@ class AgentController:
             conf_label = res["confidence_label"]
             evidence_list.extend(res["evidence"])
             stats = res["statistics"]
+
+            # Automatically synthesize animated time-series timelapse
+            try:
+                _, tl_art = generate_change_timelapse(
+                    arrays[0], arrays[1],
+                    label_a=metas[0].original_name[:24],
+                    label_b=metas[1].original_name[:24]
+                )
+                evidence_list.append(tl_art)
+            except Exception:
+                pass
 
         elif task_type == TaskType.CHANGE_VQA:
             threshold_factor = parameters.get("threshold_factor", 1.2)
@@ -179,6 +199,16 @@ class AgentController:
             models_involved = res.get("models", models_involved)
             evidence_list.extend(res["evidence"])
             stats = res["statistics"]
+
+            try:
+                _, tl_art = generate_change_timelapse(
+                    arrays[0], arrays[1],
+                    label_a=metas[0].original_name[:24],
+                    label_b=metas[1].original_name[:24]
+                )
+                evidence_list.append(tl_art)
+            except Exception:
+                pass
 
         elif task_type == TaskType.OPTICAL_SAR_ANALYSIS:
             # Order optical first, sar second

@@ -6,6 +6,7 @@ import { GeoMapViewer } from '../components/GeoMapViewer';
 import { GroundedAnswerCard } from '../components/GroundedAnswerCard';
 import { ExecutionTraceViewer } from '../components/ExecutionTraceViewer';
 import { VoiceQueryInput } from '../components/VoiceQueryInput';
+import { Terrain3DViewer } from '../components/Terrain3DViewer';
 import {
   Upload,
   Play,
@@ -20,7 +21,9 @@ import {
   ChevronUp,
   Cpu,
   Sparkles,
-  Crosshair
+  Crosshair,
+  Box,
+  Film
 } from 'lucide-react';
 
 export const WorkspacePage: React.FC = () => {
@@ -33,8 +36,8 @@ export const WorkspacePage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useAdaptedModel, setUseAdaptedModel] = useState<boolean>(true);
 
-  // Phase 11 & 12 Advanced Controls & View Mode
-  const [viewMode, setViewMode] = useState<'slider' | 'map'>('slider');
+  // Phase 11, 12 & 13 Advanced Controls & View Mode
+  const [viewMode, setViewMode] = useState<'slider' | 'map' | '3d'>('slider');
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [thresholdFactor, setThresholdFactor] = useState<number>(1.2);
   const [sarFilterSize, setSarFilterSize] = useState<number>(5);
@@ -102,6 +105,12 @@ export const WorkspacePage: React.FC = () => {
                   sampleImagery.find(s => s.filename.includes('optical'));
       if (opt) setImages([opt]);
       setQuery('Compute NDVI vegetation index and canopy vigor across the spaceport.');
+    } else if (scenario === 7) {
+      // Demo 7: False-Color Infrared (CIR) Composite (GeoTIFF)
+      const opt = sampleImagery.find(s => s.filename === 'isro_sdsc_optical.tif') ||
+                  sampleImagery.find(s => s.filename.includes('optical'));
+      if (opt) setImages([opt]);
+      setQuery('Generate False-Color Infrared (CIR) composite to evaluate vegetation and water boundaries.');
     }
   };
 
@@ -212,6 +221,12 @@ export const WorkspacePage: React.FC = () => {
           >
             Demo 6: Spectral (NDVI)
           </button>
+          <button
+            onClick={() => loadDemoScenario(7)}
+            className="px-2.5 py-1 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/80 hover:border-rose-600 transition-all font-semibold"
+          >
+            Demo 7: False-Color (CIR)
+          </button>
         </div>
       </div>
 
@@ -312,6 +327,8 @@ export const WorkspacePage: React.FC = () => {
               <span className="text-[11px] font-mono text-slate-400">Quick Prompts:</span>
               <div className="flex flex-wrap gap-1.5">
                 {[
+                  "Generate False-Color Infrared (CIR) composite",
+                  "Synthesize Agriculture & Soil Moisture composite",
                   "Compute NDVI vegetation index and canopy vigor",
                   "Map surface water and wetlands via NDWI",
                   "Evaluate built-up impervious index (NDBI)",
@@ -488,22 +505,68 @@ export const WorkspacePage: React.FC = () => {
                 <Globe className="w-3.5 h-3.5" />
                 Leaflet GIS Map
               </button>
+              <button
+                onClick={() => setViewMode('3d')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-medium transition-all ${
+                  viewMode === '3d' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Box className="w-3.5 h-3.5" />
+                3D Orbital Mesh
+              </button>
             </div>
           </div>
 
-          {/* Dynamic View: Split Slider or Leaflet GIS Map */}
+          {/* Dynamic View: Split Slider vs Leaflet GIS Map vs 3D Orbital Mesh */}
           {viewMode === 'slider' ? (
             <SplitImageViewer
               images={images}
               evidence={analysisResult?.evidence || []}
             />
-          ) : (
+          ) : viewMode === 'map' ? (
             <GeoMapViewer
               images={images}
               evidence={analysisResult?.evidence || []}
               roi={roi}
               onRoiChange={setRoi}
             />
+          ) : (
+            <Terrain3DViewer
+              images={images}
+              evidence={analysisResult?.evidence || []}
+            />
+          )}
+
+          {/* Bi-Temporal Time-Series Timelapse Animation Card if present */}
+          {analysisResult?.evidence?.some(e => e.type === 'timelapse_animation') && (
+            <div className="glass-panel p-4 rounded-xl border border-amber-500/30 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-xs font-mono uppercase font-semibold text-amber-300 flex items-center gap-1.5">
+                  <Film className="w-4 h-4 text-amber-400 animate-pulse" />
+                  Bi-Temporal Time-Series Morph Timelapse
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                  Looping Temporal Transition
+                </span>
+              </div>
+              {(() => {
+                const tl = analysisResult.evidence.find(e => e.type === 'timelapse_animation');
+                if (!tl) return null;
+                return (
+                  <div className="relative rounded-lg overflow-hidden border border-slate-800 bg-slate-950 flex flex-col items-center">
+                    <img
+                      src={api.getArtifactUrl(tl.url)}
+                      alt={tl.title}
+                      className="max-h-[380px] w-full object-contain"
+                    />
+                    <div className="w-full px-3 py-2 bg-slate-900/90 text-xs font-mono text-slate-300 flex items-center justify-between border-t border-slate-800">
+                      <span>{tl.description}</span>
+                      <span className="text-cyan-400 font-bold">400ms / Epoch Hold</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           )}
 
           {/* Grounded Result Card */}
