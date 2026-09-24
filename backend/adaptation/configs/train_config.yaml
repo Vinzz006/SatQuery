@@ -1,0 +1,25 @@
+# SatQuery AI - Remote Sensing Adaptation Configuration
+model:
+  architecture: "RemoteSensingAdapterHead"
+  input_channels: 3
+  num_classes: 10
+  dropout: 0.2
+
+dataset:
+  name: "EuroSAT-LULC"
+  num_samples: 240
+  image_size: [64, 64]
+  train_split: 0.8
+  val_split: 0.2
+
+training:
+  epochs: 5
+  batch_size: 16
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  optimizer: "Adam"
+  loss: "CrossEntropyLoss"
+
+hardware:
+  device: "auto"
+  mixed_precision: false
