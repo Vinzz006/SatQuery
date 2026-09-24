@@ -13,17 +13,23 @@ router = APIRouter(prefix="", tags=["Analysis"])
 def _resolve_image_paths(image_ids: List[str]) -> List[Path]:
     resolved_paths: List[Path] = []
     for img_id in image_ids:
-        # Check uploads
+        # Check exact matches first
+        if (settings.UPLOAD_DIR / img_id).exists():
+            resolved_paths.append(settings.UPLOAD_DIR / img_id)
+            continue
+        if (settings.SAMPLE_DIR / img_id).exists():
+            resolved_paths.append(settings.SAMPLE_DIR / img_id)
+            continue
+
+        # Check glob patterns
         candidates = list(settings.UPLOAD_DIR.glob(f"*{img_id}*"))
         if not candidates:
-            # Check samples
             candidates = list(settings.SAMPLE_DIR.glob(f"*{img_id}*"))
+
+        # Check by matching basename without extension
         if not candidates:
-            # Check if img_id itself is a filename or exact match in upload or sample
-            if (settings.UPLOAD_DIR / img_id).exists():
-                candidates = [settings.UPLOAD_DIR / img_id]
-            elif (settings.SAMPLE_DIR / img_id).exists():
-                candidates = [settings.SAMPLE_DIR / img_id]
+            clean_id = Path(img_id).stem
+            candidates = list(settings.UPLOAD_DIR.glob(f"*{clean_id}*")) + list(settings.SAMPLE_DIR.glob(f"*{clean_id}*"))
 
         if not candidates:
             raise HTTPException(

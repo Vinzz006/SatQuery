@@ -6,6 +6,7 @@ from app.models.grounding import TextGuidedGroundingSpecialist
 from app.models.change_detection import BiTemporalChangeDetectionSpecialist
 from app.models.change_vqa import ChangeVQASpecialist
 from app.models.optical_sar import OpticalSARFusionSpecialist
+from app.models.spectral import SpectralIndexSpecialist
 from app.schemas.analysis import ModelInfo
 
 
@@ -26,6 +27,7 @@ class ModelRegistry:
         self.change_detector = BiTemporalChangeDetectionSpecialist()
         self.change_vqa = ChangeVQASpecialist(self.change_detector)
         self.optical_sar = OpticalSARFusionSpecialist()
+        self.spectral = SpectralIndexSpecialist()
 
         self._models = {
             "vqa": self.vqa,
@@ -33,7 +35,8 @@ class ModelRegistry:
             "grounding": self.grounding,
             "change_detection": self.change_detector,
             "change_vqa": self.change_vqa,
-            "optical_sar": self.optical_sar
+            "optical_sar": self.optical_sar,
+            "spectral": self.spectral
         }
 
     def get(self, key: str) -> BaseSpecialistModel:

@@ -5,6 +5,7 @@ export type TaskType =
   | 'change_detection'
   | 'change_vqa'
   | 'optical_sar_analysis'
+  | 'spectral_index'
   | 'general_remote_sensing_analysis';
 
 export type ModalityType = 'optical' | 'sar' | 'multispectral' | 'unknown';
@@ -28,7 +29,7 @@ export interface ImageMetadata {
 
 export interface EvidenceArtifact {
   id: string;
-  type: string; // 'change_map' | 'mask' | 'overlay' | 'bounding_box' | 'fused_composite'
+  type: string; // 'change_map' | 'mask' | 'overlay' | 'bounding_box' | 'fused_composite' | 'spectral_index'
   title: string;
   description: string;
   url: string;
@@ -58,6 +59,7 @@ export interface AnalyzeResponse {
   statistics: Record<string, any>;
   execution_time_ms: number;
   report_url?: string | null;
+  geojson_url?: string | null;
   status: string;
   error?: string | null;
 }

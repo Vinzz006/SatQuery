@@ -10,6 +10,7 @@ class TaskType(str, Enum):
     CHANGE_DETECTION = "change_detection"
     CHANGE_VQA = "change_vqa"
     OPTICAL_SAR_ANALYSIS = "optical_sar_analysis"
+    SPECTRAL_INDEX = "spectral_index"
     GENERAL_REMOTE_SENSING_ANALYSIS = "general_remote_sensing_analysis"
 
 
@@ -82,6 +83,7 @@ class AnalyzeResponse(BaseModel):
     statistics: Dict[str, Any] = Field(default_factory=dict)
     execution_time_ms: float
     report_url: Optional[str] = None
+    geojson_url: Optional[str] = None
     status: str = "success"
     error: Optional[str] = None
 

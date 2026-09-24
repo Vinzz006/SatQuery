@@ -5,6 +5,7 @@ import { SplitImageViewer } from '../components/SplitImageViewer';
 import { GeoMapViewer } from '../components/GeoMapViewer';
 import { GroundedAnswerCard } from '../components/GroundedAnswerCard';
 import { ExecutionTraceViewer } from '../components/ExecutionTraceViewer';
+import { VoiceQueryInput } from '../components/VoiceQueryInput';
 import {
   Upload,
   Play,
@@ -18,7 +19,8 @@ import {
   ChevronDown,
   ChevronUp,
   Cpu,
-  Sparkles
+  Sparkles,
+  Crosshair
 } from 'lucide-react';
 
 export const WorkspacePage: React.FC = () => {
@@ -31,11 +33,12 @@ export const WorkspacePage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useAdaptedModel, setUseAdaptedModel] = useState<boolean>(true);
 
-  // Phase 11 Advanced Controls & View Mode
+  // Phase 11 & 12 Advanced Controls & View Mode
   const [viewMode, setViewMode] = useState<'slider' | 'map'>('slider');
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [thresholdFactor, setThresholdFactor] = useState<number>(1.2);
   const [sarFilterSize, setSarFilterSize] = useState<number>(5);
+  const [roi, setRoi] = useState<[number, number, number, number] | null>(null);
 
   // Load sample assets on mount
   useEffect(() => {
@@ -93,6 +96,12 @@ export const WorkspacePage: React.FC = () => {
                   sampleImagery.find(s => s.filename.includes('sar'));
       if (opt && sar) setImages([opt, sar]);
       setQuery('Use both images to identify built-up regions.');
+    } else if (scenario === 6) {
+      // Demo 6: Spectral NDVI & Vegetation Health (GeoTIFF)
+      const opt = sampleImagery.find(s => s.filename === 'isro_sdsc_optical.tif') ||
+                  sampleImagery.find(s => s.filename.includes('optical'));
+      if (opt) setImages([opt]);
+      setQuery('Compute NDVI vegetation index and canopy vigor across the spaceport.');
     }
   };
 
@@ -137,7 +146,8 @@ export const WorkspacePage: React.FC = () => {
         useAdaptedModel,
         {
           threshold_factor: thresholdFactor,
-          sar_filter_size: sarFilterSize
+          sar_filter_size: sarFilterSize,
+          ...(roi ? { roi } : {})
         }
       );
       setAnalysisResult(res);
@@ -195,6 +205,12 @@ export const WorkspacePage: React.FC = () => {
             className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 transition-all"
           >
             Demo 5: Opt+SAR (GeoTIFF)
+          </button>
+          <button
+            onClick={() => loadDemoScenario(6)}
+            className="px-2.5 py-1 rounded bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 hover:border-emerald-600 transition-all font-semibold"
+          >
+            Demo 6: Spectral (NDVI)
           </button>
         </div>
       </div>
@@ -272,16 +288,22 @@ export const WorkspacePage: React.FC = () => {
 
           {/* Natural Language Query Box */}
           <div className="glass-panel p-4 rounded-xl border border-slate-800 space-y-3">
-            <span className="text-xs font-mono uppercase font-semibold text-slate-200 flex items-center gap-1.5">
-              <FileQuestion className="w-4 h-4 text-cyan-400" />
-              Natural Language Mission Query
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono uppercase font-semibold text-slate-200 flex items-center gap-1.5">
+                <FileQuestion className="w-4 h-4 text-cyan-400" />
+                Natural Language Mission Query
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">Voice Input:</span>
+                <VoiceQueryInput onTranscript={(speech) => setQuery(speech)} disabled={isAnalyzing} />
+              </div>
+            </div>
 
             <textarea
               rows={3}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g., What changed between these two images? or Highlight the water body."
+              placeholder="e.g., Compute NDVI vegetation index or What changed between these two images?"
               className="w-full rounded-lg bg-slate-950/80 border border-slate-700 p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-sans"
             />
 
@@ -290,9 +312,11 @@ export const WorkspacePage: React.FC = () => {
               <span className="text-[11px] font-mono text-slate-400">Quick Prompts:</span>
               <div className="flex flex-wrap gap-1.5">
                 {[
+                  "Compute NDVI vegetation index and canopy vigor",
+                  "Map surface water and wetlands via NDWI",
+                  "Evaluate built-up impervious index (NDBI)",
                   "What type of land cover dominates this region?",
                   "Highlight the water body.",
-                  "Describe this satellite image.",
                   "What changed between these two images?",
                   "Has the built-up area increased?",
                   "Use both images to identify built-up regions."
@@ -386,6 +410,22 @@ export const WorkspacePage: React.FC = () => {
               )}
             </div>
 
+            {/* ROI Active Banner */}
+            {roi && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-cyan-950/80 border border-cyan-500/50 text-xs font-mono text-cyan-300">
+                <span className="flex items-center gap-1.5">
+                  <Crosshair className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                  <span>ROI Active: [{roi.join(', ')}]</span>
+                </span>
+                <button
+                  onClick={() => setRoi(null)}
+                  className="text-slate-400 hover:text-red-400 underline text-[11px]"
+                >
+                  Clear ROI
+                </button>
+              </div>
+            )}
+
             {/* Analyze Button */}
             <button
               onClick={handleAnalyze}
@@ -461,6 +501,8 @@ export const WorkspacePage: React.FC = () => {
             <GeoMapViewer
               images={images}
               evidence={analysisResult?.evidence || []}
+              roi={roi}
+              onRoiChange={setRoi}
             />
           )}
 

@@ -68,6 +68,10 @@ export const api = {
     return `${API_BASE_URL}/reports/${resultId}/json`;
   },
 
+  getGeoJsonReportUrl(resultId: string): string {
+    return `${API_BASE_URL}/reports/${resultId}/geojson`;
+  },
+
   getArtifactUrl(relativePath: string): string {
     if (!relativePath) return '';
     if (relativePath.startsWith('http')) return relativePath;

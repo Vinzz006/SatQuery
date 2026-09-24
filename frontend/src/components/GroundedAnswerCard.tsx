@@ -87,7 +87,7 @@ export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <a
             href={api.getPdfReportUrl(analysis.id)}
             target="_blank"
@@ -96,6 +96,16 @@ export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
           >
             <Download className="w-3.5 h-3.5" />
             Download PDF Report
+          </a>
+
+          <a
+            href={api.getGeoJsonReportUrl(analysis.id)}
+            download={`SatQuery_Vectors_${analysis.id}.geojson`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950 hover:bg-emerald-900/80 text-emerald-300 font-mono text-xs border border-emerald-700/60 transition-all shadow-sm shadow-emerald-900/20"
+            title="Download WGS84 GeoJSON Polygon Vectors for QGIS / ArcGIS"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            Export GeoJSON
           </a>
 
           <a

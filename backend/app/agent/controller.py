@@ -71,6 +71,36 @@ class AgentController:
             details=f"Detected sensor modalities: {[m.value.upper() for m in modalities]}."
         )
 
+        # Optional Spatial ROI Bounding Window
+        roi = parameters.get("roi")
+        if roi and isinstance(roi, (list, tuple)) and len(roi) == 4:
+            try:
+                rx0, ry0, rx1, ry1 = [float(v) for v in roi]
+                w, h = metas[0].width, metas[0].height
+                # If normalized 0-1
+                if all(0.0 <= v <= 1.0 for v in [rx0, ry0, rx1, ry1]):
+                    c_xmin = int(min(rx0, rx1) * w)
+                    c_xmax = int(max(rx0, rx1) * w)
+                    c_ymin = int(min(ry0, ry1) * h)
+                    c_ymax = int(max(ry0, ry1) * h)
+                else:
+                    c_xmin = int(max(0, min(rx0, rx1)))
+                    c_xmax = int(min(w, max(rx0, rx1)))
+                    c_ymin = int(max(0, min(ry0, ry1)))
+                    c_ymax = int(min(h, max(ry0, ry1)))
+
+                if (c_xmax - c_xmin) >= 16 and (c_ymax - c_ymin) >= 16:
+                    arrays = [arr[c_ymin:c_ymax, c_xmin:c_xmax] for arr in arrays]
+                    trace.add_step(
+                        name="Spatial ROI Bounding Window",
+                        details=f"Confined spatial analysis to user-defined bounding window [{c_xmin}, {c_ymin}] to [{c_xmax}, {c_ymax}] ({c_xmax - c_xmin}x{c_ymax - c_ymin} px)."
+                    )
+            except Exception as e:
+                trace.add_step(
+                    name="Spatial ROI Processing Warning",
+                    details=f"Could not apply spatial bounding ROI: {str(e)}. Proceeding with full scene."
+                )
+
         # 3. Query Classification & Routing
         t_route = time.time()
         task_type, specialist_key, routing_rationale = QueryRouter.route(
@@ -116,6 +146,14 @@ class AgentController:
             stats = res["statistics"]
 
         elif task_type == TaskType.GROUNDING:
+            res = specialist.predict(arrays[0], metas[0], query)
+            answer = res["answer"]
+            confidence = res["confidence"]
+            conf_label = res["confidence_label"]
+            evidence_list.extend(res["evidence"])
+            stats = res["statistics"]
+
+        elif task_type == TaskType.SPECTRAL_INDEX:
             res = specialist.predict(arrays[0], metas[0], query)
             answer = res["answer"]
             confidence = res["confidence"]
@@ -186,6 +224,7 @@ class AgentController:
             statistics=stats,
             execution_time_ms=round(total_duration_ms, 1),
             report_url=f"/api/v1/reports/{req_id}/pdf",
+            geojson_url=f"/api/v1/reports/{req_id}/geojson",
             status="success"
         )
 

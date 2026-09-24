@@ -17,7 +17,18 @@ class QueryRouter:
 
         # Route single image workflows
         if num_images == 1:
-            if any(w in q_lower for w in ["highlight", "where is", "where are", "locate", "find", "bounding box", "mask", "segment", "show me the"]):
+            if any(w in q_lower for w in [
+                "ndvi", "ndwi", "ndbi", "vegetation index", "water index", "built-up index",
+                "spectral index", "biomass index", "canopy health", "spectral heatmap",
+                "compute ndvi", "compute ndwi", "compute ndbi", "surface water index"
+            ]):
+                return (
+                    TaskType.SPECTRAL_INDEX,
+                    "spectral",
+                    "Single image inquiry with spectral / radiometric index mapping intent -> Routed to Spectral Index Specialist (NDVI/NDWI/NDBI)."
+                )
+
+            elif any(w in q_lower for w in ["highlight", "where is", "where are", "locate", "find", "bounding box", "mask", "segment", "show me the"]):
                 return (
                     TaskType.GROUNDING,
                     "grounding",

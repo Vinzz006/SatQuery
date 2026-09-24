@@ -1,31 +1,37 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import { ImageMetadata, EvidenceArtifact } from '../types';
 import { api } from '../services/api';
-import { MapPin, Layers, Sliders, Globe, Navigation, Eye } from 'lucide-react';
+import { MapPin, Globe, Navigation, Eye, Sliders, Crop, X, Crosshair } from 'lucide-react';
 
 interface Props {
   images: ImageMetadata[];
   evidence?: EvidenceArtifact[];
+  roi?: [number, number, number, number] | null;
+  onRoiChange?: (roi: [number, number, number, number] | null) => void;
 }
 
-export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [] }) => {
+export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [], roi, onRoiChange }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const imageOverlayRef = useRef<L.ImageOverlay | null>(null);
   const evidenceOverlayRef = useRef<L.ImageOverlay | null>(null);
+  const roiRectRef = useRef<L.Rectangle | null>(null);
+  const tempRectRef = useRef<L.Rectangle | null>(null);
+  const drawingStartRef = useRef<L.LatLng | null>(null);
 
   const [cursorCoords, setCursorCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [baseMapType, setBaseMapType] = useState<'satellite' | 'dark' | 'osm'>('satellite');
   const [evidenceOpacity, setEvidenceOpacity] = useState<number>(85);
   const [showEvidence, setShowEvidence] = useState<boolean>(true);
   const [activeEvidenceIndex, setActiveEvidenceIndex] = useState<number>(0);
+  const [isDrawingRoi, setIsDrawingRoi] = useState<boolean>(false);
+  const [roiActive, setRoiActive] = useState<boolean>(false);
 
   const primaryImage = images.length > 0 ? images[0] : null;
   const activeEvidence = evidence.length > 0 ? evidence[activeEvidenceIndex] : null;
 
   // Determine geospatial bounds
-  // If image has real GeoTIFF bounds: [[miny, minx], [maxy, maxx]]
   const getGeoBounds = (img: ImageMetadata | null): L.LatLngBoundsExpression => {
     if (img && img.bounds) {
       return [
@@ -78,7 +84,6 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [] }) => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Remove old tile layers
     map.eachLayer((layer) => {
       if (layer instanceof L.TileLayer) {
         map.removeLayer(layer);
@@ -104,7 +109,6 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [] }) => {
 
     const bounds = getGeoBounds(primaryImage);
 
-    // Remove existing image overlay
     if (imageOverlayRef.current) {
       map.removeLayer(imageOverlayRef.current);
       imageOverlayRef.current = null;
@@ -118,7 +122,7 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [] }) => {
     }
   }, [primaryImage]);
 
-  // Update Evidence Overlay (Change Map / Mask / Overlay)
+  // Update Evidence Overlay
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -140,6 +144,117 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [] }) => {
     }
   }, [activeEvidence, showEvidence, evidenceOpacity, primaryImage]);
 
+  // Handle ROI Interactive Drawing
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+      if (!isDrawingRoi) return;
+
+      if (!drawingStartRef.current) {
+        // Point 1: Set corner A
+        drawingStartRef.current = e.latlng;
+      } else {
+        // Point 2: Set corner B and finalize ROI
+        const start = drawingStartRef.current;
+        const end = e.latlng;
+        const bounds = L.latLngBounds(start, end);
+
+        // Remove previous ROI rect
+        if (roiRectRef.current) {
+          map.removeLayer(roiRectRef.current);
+        }
+        if (tempRectRef.current) {
+          map.removeLayer(tempRectRef.current);
+          tempRectRef.current = null;
+        }
+
+        // Draw finalized glowing rectangle
+        const rect = L.rectangle(bounds, {
+          color: '#06b6d4',
+          weight: 2,
+          dashArray: '6, 6',
+          fillColor: '#0891b2',
+          fillOpacity: 0.2
+        }).addTo(map);
+        roiRectRef.current = rect;
+
+        // Calculate normalized bounding box [minx, miny, maxx, maxy]
+        const imgBounds = primaryImage?.bounds || { minx: 80.20, miny: 13.70, maxx: 80.25, maxy: 13.75 };
+        const latMin = Math.min(start.lat, end.lat);
+        const latMax = Math.max(start.lat, end.lat);
+        const lngMin = Math.min(start.lng, end.lng);
+        const lngMax = Math.max(start.lng, end.lng);
+
+        const normX0 = Math.max(0, Math.min(1, (lngMin - imgBounds.minx) / (imgBounds.maxx - imgBounds.minx)));
+        const normX1 = Math.max(0, Math.min(1, (lngMax - imgBounds.minx) / (imgBounds.maxx - imgBounds.minx)));
+        const normY0 = Math.max(0, Math.min(1, (imgBounds.maxy - latMax) / (imgBounds.maxy - imgBounds.miny)));
+        const normY1 = Math.max(0, Math.min(1, (imgBounds.maxy - latMin) / (imgBounds.maxy - imgBounds.miny)));
+
+        const roiTuple: [number, number, number, number] = [
+          parseFloat(normX0.toFixed(4)),
+          parseFloat(normY0.toFixed(4)),
+          parseFloat(normX1.toFixed(4)),
+          parseFloat(normY1.toFixed(4))
+        ];
+
+        onRoiChange?.(roiTuple);
+        setRoiActive(true);
+        setIsDrawingRoi(false);
+        drawingStartRef.current = null;
+      }
+    };
+
+    const handleMouseMove = (e: L.LeafletMouseEvent) => {
+      if (!isDrawingRoi || !drawingStartRef.current) return;
+
+      const bounds = L.latLngBounds(drawingStartRef.current, e.latlng);
+      if (tempRectRef.current) {
+        tempRectRef.current.setBounds(bounds);
+      } else {
+        tempRectRef.current = L.rectangle(bounds, {
+          color: '#f59e0b',
+          weight: 1.5,
+          dashArray: '4, 4',
+          fillColor: '#f59e0b',
+          fillOpacity: 0.15
+        }).addTo(map);
+      }
+    };
+
+    map.on('click', handleMapClick);
+    map.on('mousemove', handleMouseMove);
+
+    // Change cursor style when drawing ROI
+    if (isDrawingRoi) {
+      L.DomUtil.addClass(map.getContainer(), 'cursor-crosshair');
+    } else {
+      L.DomUtil.removeClass(map.getContainer(), 'cursor-crosshair');
+    }
+
+    return () => {
+      map.off('click', handleMapClick);
+      map.off('mousemove', handleMouseMove);
+    };
+  }, [isDrawingRoi, primaryImage, onRoiChange]);
+
+  const clearRoi = () => {
+    const map = mapInstanceRef.current;
+    if (map && roiRectRef.current) {
+      map.removeLayer(roiRectRef.current);
+      roiRectRef.current = null;
+    }
+    if (map && tempRectRef.current) {
+      map.removeLayer(tempRectRef.current);
+      tempRectRef.current = null;
+    }
+    drawingStartRef.current = null;
+    setIsDrawingRoi(false);
+    setRoiActive(false);
+    onRoiChange?.(null);
+  };
+
   const fitToRaster = () => {
     if (mapInstanceRef.current && primaryImage) {
       mapInstanceRef.current.fitBounds(getGeoBounds(primaryImage));
@@ -160,8 +275,39 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [] }) => {
           </span>
         </div>
 
-        {/* Controls: Basemap, Fit */}
+        {/* Controls: ROI Tool, Basemap, Fit */}
         <div className="flex items-center gap-2">
+          {/* ROI Drawing Button */}
+          {!roiActive ? (
+            <button
+              onClick={() => {
+                setIsDrawingRoi(!isDrawingRoi);
+                drawingStartRef.current = null;
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-all border ${
+                isDrawingRoi
+                  ? 'bg-amber-500/20 border-amber-500/80 text-amber-300 animate-pulse'
+                  : 'bg-slate-950 hover:bg-slate-800 text-cyan-300 border-slate-800'
+              }`}
+              title="Click two corners on the map to define a Region of Interest for localized analysis"
+            >
+              <Crop className="w-3 h-3 text-cyan-400" />
+              {isDrawingRoi ? 'Click 2 Points on Map' : 'Select Spatial ROI'}
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-[11px] text-cyan-300">
+              <Crosshair className="w-3 h-3 text-cyan-400" />
+              <span>ROI Active</span>
+              <button
+                onClick={clearRoi}
+                className="hover:text-red-400 ml-1 p-0.5"
+                title="Clear selected ROI"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800">
             <button
               onClick={() => setBaseMapType('satellite')}
@@ -276,6 +422,13 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [] }) => {
         <div className="absolute top-3 left-3 z-20 px-2.5 py-1 rounded bg-slate-950/85 border border-cyan-800/60 text-[10px] font-mono text-cyan-300 backdrop-blur-sm">
           <span>TARGET: ISRO SDSC SHAR (SRIHARIKOTA, INDIA)</span>
         </div>
+
+        {/* ROI Instruction Banner if Drawing */}
+        {isDrawingRoi && (
+          <div className="absolute top-3 right-3 z-20 px-3 py-1.5 rounded bg-amber-950/90 border border-amber-500/60 text-xs font-mono text-amber-300 backdrop-blur-sm shadow-lg animate-bounce">
+            Click 1st corner, then 2nd corner to bound Region of Interest
+          </div>
+        )}
       </div>
 
     </div>
