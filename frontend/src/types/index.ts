@@ -46,6 +46,35 @@ export interface ExecutionTraceStep {
   duration_ms: number;
 }
 
+export interface DetectedFeature {
+  id: string;
+  label: string;
+  score: number;
+  area_hectares: number;
+  area_km2: number;
+  perimeter_m: number;
+  centroid: [number, number]; // [lat, lon]
+  box_2d: [number, number, number, number];
+  polygon_coords?: [number, number][];
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+  task?: string;
+  response_id?: string;
+}
+
+export interface SessionContext {
+  session_id: string;
+  created_at: string;
+  updated_at: string;
+  messages: ChatMessage[];
+  image_ids: string[];
+  recent_analysis_ids: string[];
+}
+
 export interface AnalyzeResponse {
   id: string;
   task: TaskType;
@@ -61,6 +90,7 @@ export interface AnalyzeResponse {
   execution_time_ms: number;
   report_url?: string | null;
   geojson_url?: string | null;
+  session_id?: string | null;
   status: string;
   error?: string | null;
 }

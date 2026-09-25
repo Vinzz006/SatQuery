@@ -63,11 +63,41 @@ class ExecutionTraceStep(BaseModel):
     duration_ms: float = 0.0
 
 
+class DetectedFeature(BaseModel):
+    id: str
+    label: str
+    score: float
+    area_hectares: float
+    area_km2: float
+    perimeter_m: float
+    centroid: List[float]  # [lat, lon]
+    box_2d: List[float]  # [ymin, xmin, ymax, xmax]
+    polygon_coords: Optional[List[List[float]]] = None  # [[lon, lat], ...]
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+    timestamp: str
+    task: Optional[str] = None
+    response_id: Optional[str] = None
+
+
+class SessionContext(BaseModel):
+    session_id: str
+    created_at: str
+    updated_at: str
+    messages: List[ChatMessage] = Field(default_factory=list)
+    image_ids: List[str] = Field(default_factory=list)
+    recent_analysis_ids: List[str] = Field(default_factory=list)
+
+
 class AnalyzeRequest(BaseModel):
     query: str
     image_ids: List[str]
     parameters: Optional[Dict[str, Any]] = Field(default_factory=dict)
     use_adapted_model: bool = False
+    session_id: Optional[str] = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -85,6 +115,7 @@ class AnalyzeResponse(BaseModel):
     execution_time_ms: float
     report_url: Optional[str] = None
     geojson_url: Optional[str] = None
+    session_id: Optional[str] = None
     status: str = "success"
     error: Optional[str] = None
 

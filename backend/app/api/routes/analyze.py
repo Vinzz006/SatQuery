@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import List
 from fastapi import APIRouter, HTTPException
 
-from app.agent.controller import agent_controller, analysis_store
+from app.agent.controller import agent_controller, analysis_store, get_session, clear_session
 from app.reports.pdf_generator import generate_pdf_report
-from app.schemas.analysis import AnalyzeRequest, AnalyzeResponse
+from app.schemas.analysis import AnalyzeRequest, AnalyzeResponse, SessionContext
 from app.config import settings
 
 router = APIRouter(prefix="", tags=["Analysis"])
@@ -59,7 +59,8 @@ async def universal_analyze(request: AnalyzeRequest):
             query=request.query,
             image_paths=image_paths,
             use_adapted_model=request.use_adapted_model,
-            parameters=request.parameters
+            parameters=request.parameters,
+            session_id=request.session_id
         )
 
         # Proactively generate PDF report so it's instantly available for download
@@ -120,3 +121,21 @@ async def get_analysis_result(result_id: str):
     if result_id not in analysis_store:
         raise HTTPException(status_code=404, detail=f"Analysis session '{result_id}' not found.")
     return analysis_store[result_id]
+
+
+@router.get("/sessions/{session_id}", response_model=SessionContext)
+async def get_session_history(session_id: str):
+    """Fetches full conversational session history and turn progression."""
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Conversational session '{session_id}' not found.")
+    return session
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Clears conversational history for the given session."""
+    success = clear_session(session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Conversational session '{session_id}' not found.")
+    return {"message": f"Session '{session_id}' cleared successfully."}

@@ -144,7 +144,32 @@ def generate_pdf_report(analysis: AnalyzeResponse) -> Path:
     story.append(img_table)
     story.append(Spacer(1, 10))
 
-    # Observable Execution Trace
+    # Delineated Vector Targets & Physical Metrics (Phase 14)
+    detected_feats = analysis.statistics.get("detected_features", []) if analysis.statistics else []
+    if detected_feats and isinstance(detected_feats, list):
+        story.append(Paragraph("DELINEATED VECTOR TARGETS & SPATIAL TELEMETRY", h2_style))
+        feat_data = [["Feature", "Area (ha)", "Area (km²)", "Perimeter (m)", "Centroid [Lat, Lon]", "Confidence"]]
+        for f in detected_feats:
+            c_str = f"{f.get('centroid', [0, 0])[0]}°, {f.get('centroid', [0, 0])[1]}°" if f.get('centroid') else "N/A"
+            feat_data.append([
+                f.get("label", "Target")[:22],
+                f"{f.get('area_hectares', 0.0):.2f}",
+                f"{f.get('area_km2', 0.0):.4f}",
+                f"{f.get('perimeter_m', 0.0):.1f}",
+                c_str,
+                f"{int(f.get('score', 0.85) * 100)}%"
+            ])
+        feat_table = Table(feat_data, colWidths=[1.8 * inch, 0.9 * inch, 0.9 * inch, 1.0 * inch, 1.6 * inch, 0.8 * inch])
+        feat_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#065F46")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#A7F3D0")),
+        ]))
+        story.append(feat_table)
+        story.append(Spacer(1, 10))
     story.append(Paragraph("OBSERVABLE AGENTIC EXECUTION TRACE", h2_style))
     trace_data = [["#", "Phase / Event", "Observable Details", "Time (ms)"]]
     for s in analysis.trace:

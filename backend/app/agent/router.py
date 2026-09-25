@@ -39,11 +39,16 @@ class QueryRouter:
                     "Single image inquiry with spectral / radiometric index mapping intent -> Routed to Spectral Index Specialist (NDVI/NDWI/NDBI)."
                 )
 
-            elif any(w in q_lower for w in ["highlight", "where is", "where are", "locate", "find", "bounding box", "mask", "segment", "show me the"]):
+            elif any(w in q_lower for w in [
+                "highlight", "where is", "where are", "locate", "find", "bounding box",
+                "mask", "segment", "show me the", "identify", "detect", "delineate",
+                "outline", "demarcate", "compute area", "compute the area", "measure area",
+                "measure the area", "calculate area", "launch pad", "launch complex"
+            ]):
                 return (
                     TaskType.GROUNDING,
                     "grounding",
-                    "Single image detected with spatial referring/localization intent -> Routed to Text-Guided Grounding Specialist."
+                    "Single image detected with spatial referring/localization/grounding intent -> Routed to Text-Guided Grounding Specialist."
                 )
 
             elif any(w in q_lower for w in ["describe", "caption", "overview", "what does this show", "scene description", "tell me about"]):

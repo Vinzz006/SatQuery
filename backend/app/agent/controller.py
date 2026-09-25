@@ -1,7 +1,8 @@
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.agent.registry import registry
 from app.agent.router import QueryRouter
@@ -10,7 +11,7 @@ from app.remote_sensing.geotiff import extract_raster_metadata
 from app.evidence.timelapse import generate_change_timelapse
 from app.schemas.analysis import (
     AnalyzeRequest, AnalyzeResponse, TaskType, ModalityType,
-    ImageMetadata, EvidenceArtifact
+    ImageMetadata, EvidenceArtifact, SessionContext, ChatMessage
 )
 
 
@@ -18,7 +19,7 @@ class AgentController:
     """
     The Central Agentic Controller for SatQuery AI.
     Orchestrates validation, routing, specialist invocation, evidence compilation,
-    and trace generation across multimodal remote-sensing workflows.
+    session memory, and trace generation across multimodal remote-sensing workflows.
     """
     def __init__(self):
         self.registry = registry
@@ -28,16 +29,57 @@ class AgentController:
         query: str,
         image_paths: List[Path],
         use_adapted_model: bool = False,
-        parameters: Dict[str, Any] = None
+        parameters: Dict[str, Any] = None,
+        session_id: Optional[str] = None
     ) -> AnalyzeResponse:
         trace = ExecutionTraceCollector()
         start_time = time.time()
         req_id = str(uuid.uuid4())[:8]
         parameters = parameters or {}
+        session_id = session_id or parameters.get("session_id")
+
+        # 0. Session Context & Multi-turn Conversational Memory
+        session: Optional[SessionContext] = None
+        effective_query = query
+        if session_id:
+            if session_id not in session_store:
+                session = SessionContext(
+                    session_id=session_id,
+                    created_at=datetime.utcnow().isoformat() + "Z",
+                    updated_at=datetime.utcnow().isoformat() + "Z",
+                    messages=[],
+                    image_ids=[p.name for p in image_paths],
+                    recent_analysis_ids=[]
+                )
+                session_store[session_id] = session
+                trace.add_step(
+                    name="Session Context Initialized",
+                    details=f"Initialized multi-turn conversational session '{session_id}'."
+                )
+            else:
+                session = session_store[session_id]
+                session.updated_at = datetime.utcnow().isoformat() + "Z"
+                turn_num = (len(session.messages) // 2) + 1
+                last_assistant_msg = next((m.content for m in reversed(session.messages) if m.role == "assistant"), None)
+                trace.add_step(
+                    name=f"Conversational Memory Loaded (Turn #{turn_num})",
+                    details=f"Retrieved session '{session_id}' with {len(session.messages)} prior messages. Context conditioned on conversation state."
+                )
+                # Resolve contextual follow-up queries if the user references previous findings
+                q_low = query.lower()
+                if any(pronoun in q_low for pronoun in ["it", "this area", "that", "these", "its area", "how large", "measure area"]) and last_assistant_msg:
+                    # Enrich query with prior context keywords
+                    if "water" in last_assistant_msg.lower() and "water" not in q_low:
+                        effective_query = f"{query} of water bodies"
+                    elif "launch" in last_assistant_msg.lower() and "launch" not in q_low:
+                        effective_query = f"{query} of launch complex structures"
+                    elif "built-up" in last_assistant_msg.lower() and "built-up" not in q_low:
+                        effective_query = f"{query} of built-up urban structures"
 
         trace.add_step(
             name="Query Ingestion",
-            details=f"Received natural language query: '{query}' with {len(image_paths)} uploaded image(s)."
+            details=f"Received natural language query: '{query}' with {len(image_paths)} uploaded image(s)." +
+                    (f" (Contextually resolved as '{effective_query}')" if effective_query != query else "")
         )
 
         # 1. Input Validation
@@ -105,7 +147,7 @@ class AgentController:
         # 3. Query Classification & Routing
         t_route = time.time()
         task_type, specialist_key, routing_rationale = QueryRouter.route(
-            query=query,
+            query=effective_query,
             num_images=len(metas),
             modalities=modalities
         )
@@ -237,6 +279,25 @@ class AgentController:
             details=f"Derived grounded response with calibrated confidence {conf_label}."
         )
 
+        # Update multi-turn conversational session history
+        if session:
+            session.messages.append(ChatMessage(
+                role="user",
+                content=query,
+                timestamp=datetime.utcnow().isoformat() + "Z"
+            ))
+            session.messages.append(ChatMessage(
+                role="assistant",
+                content=answer,
+                timestamp=datetime.utcnow().isoformat() + "Z",
+                task=task_type.value,
+                response_id=req_id
+            ))
+            session.recent_analysis_ids.append(req_id)
+            for p in image_paths:
+                if p.name not in session.image_ids:
+                    session.image_ids.append(p.name)
+
         total_duration_ms = (time.time() - start_time) * 1000
 
         # Construct final response
@@ -255,6 +316,7 @@ class AgentController:
             execution_time_ms=round(total_duration_ms, 1),
             report_url=f"/api/v1/reports/{req_id}/pdf",
             geojson_url=f"/api/v1/reports/{req_id}/geojson",
+            session_id=session_id,
             status="success"
         )
 
@@ -264,6 +326,20 @@ class AgentController:
         return response
 
 
-# Global in-memory cache for recent analysis sessions
+# Global in-memory cache for recent analysis sessions and conversational state
 analysis_store: Dict[str, AnalyzeResponse] = {}
+session_store: Dict[str, SessionContext] = {}
 agent_controller = AgentController()
+
+
+def get_session(session_id: str) -> Optional[SessionContext]:
+    """Retrieves conversational session context by ID."""
+    return session_store.get(session_id)
+
+
+def clear_session(session_id: str) -> bool:
+    """Clears conversational session history."""
+    if session_id in session_store:
+        del session_store[session_id]
+        return True
+    return False

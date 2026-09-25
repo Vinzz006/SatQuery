@@ -255,6 +255,26 @@ The web interface on `/workspace` contains instant quick-launch buttons for all 
 3. Click **Execute Analysis & Trace**.
 4. Result: Optical-SAR false-color composite, SAR microwave backscatter corner-reflector detection, and cloud-penetrating built-up footprint extraction.
 
+### Demo 6: Spectral NDVI & Canopy Health (GeoTIFF)
+1. Click **Demo 6: Spectral (NDVI)** (loads optical scene).
+2. Query: *"Compute NDVI vegetation index and canopy vigor across the spaceport."*
+3. Click **Execute Analysis & Trace**.
+4. Result: Spectral NDVI radiometric index heatmap with color-scaled vigor distribution, min/mean/max telemetry, and LULC classification.
+
+### Demo 7: False-Color Infrared (CIR) Composite (GeoTIFF)
+1. Click **Demo 7: False-Color (CIR)** (loads optical scene).
+2. Query: *"Generate False-Color Infrared (CIR) composite to evaluate vegetation and water boundaries."*
+3. Click **Execute Analysis & Trace**.
+4. Result: Near-Infrared, Red, and Green band composite rendering vibrant crimson vegetation canopy and crystal-clear hydrologic boundaries.
+
+### Demo 8: Spaceport Grounding & Multi-Turn Dialogue (GeoTIFF EPSG:4326)
+1. Click **Demo 8: Spaceport (GeoTIFF)** (loads high-fidelity ISRO SDSC Sriharikota Spaceport GeoTIFF centered at ~13.72° N, ~80.23° E).
+2. Query: *"Identify and compute the area of the launch complexes and propellant facilities."*
+3. Click **Execute Analysis & Trace**.
+4. Result: Delineated Vector Polygons table detailing area in hectares (ha), square kilometers ($km^2$), perimeter, and exact WGS84 geographic centroids.
+5. In **Active Dialogue Thread**, ask contextual follow-ups (e.g. *"Highlight the surrounding water bodies"* or *"Compute vegetation health (NDVI)"*) to observe continuous conversational session memory.
+6. Click **Export GeoJSON** to download polygon vector boundaries for GIS analysis in QGIS / ArcGIS.
+
 ---
 
 ## 8. Empirical Benchmark Evaluation

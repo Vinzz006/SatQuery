@@ -102,35 +102,64 @@ def generate_geojson(analysis: AnalyzeResponse) -> Dict[str, Any]:
         }
     })
 
-    # 2. Extract specific features from Evidence Artifacts
-    for art in analysis.evidence:
-        props = art.properties or {}
+    # 2. Extract specific features from Statistics and Evidence Artifacts
+    # Prioritize rich detected_features if present in statistics
+    detected_features_list = analysis.statistics.get("detected_features", []) if analysis.statistics else []
+    if detected_features_list and isinstance(detected_features_list, list):
+        for idx, feat in enumerate(detected_features_list):
+            poly_coords = feat.get("polygon_coords")
+            if poly_coords and len(poly_coords) >= 4:
+                geom_coords = [poly_coords]
+            else:
+                box = feat.get("box_2d", [0, 0, 1, 1])
+                geom_coords = box_to_geojson_polygon(box[0], box[1], box[2], box[3], width, height, bounds, is_normalized=True)
 
-        # Grounding / Bounding boxes
-        if "boxes" in props and isinstance(props["boxes"], list):
-            for idx, box in enumerate(props["boxes"]):
-                if isinstance(box, dict) and "box_2d" in box:
-                    coords_2d = box["box_2d"]
-                    label = box.get("label", "Detected Feature")
-                    score = float(box.get("score", 0.85))
-                    poly = box_to_geojson_polygon(
-                        coords_2d[0], coords_2d[1], coords_2d[2], coords_2d[3],
-                        width, height, bounds, is_normalized=True
-                    )
-                    features.append({
-                        "type": "Feature",
-                        "id": f"target_{art.id}_{idx}",
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": poly
-                        },
-                        "properties": {
-                            "feature_type": "grounded_target",
-                            "label": label,
-                            "detection_score": score,
-                            "source_artifact": art.title
-                        }
-                    })
+            features.append({
+                "type": "Feature",
+                "id": feat.get("id", f"target_feat_{idx+1}"),
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": geom_coords
+                },
+                "properties": {
+                    "feature_type": "grounded_aerospace_target",
+                    "label": feat.get("label", "Detected Target"),
+                    "detection_score": feat.get("score", 0.85),
+                    "area_hectares": feat.get("area_hectares", 0.0),
+                    "area_km2": feat.get("area_km2", 0.0),
+                    "perimeter_meters": feat.get("perimeter_m", 0.0),
+                    "centroid_lat": feat.get("centroid", [0, 0])[0],
+                    "centroid_lon": feat.get("centroid", [0, 0])[1]
+                }
+            })
+    else:
+        # Fallback to Evidence Artifact boxes
+        for art in analysis.evidence:
+            props = art.properties or {}
+            if "boxes" in props and isinstance(props["boxes"], list):
+                for idx, box in enumerate(props["boxes"]):
+                    if isinstance(box, dict) and "box_2d" in box:
+                        coords_2d = box["box_2d"]
+                        label = box.get("label", "Detected Feature")
+                        score = float(box.get("score", 0.85))
+                        poly = box_to_geojson_polygon(
+                            coords_2d[0], coords_2d[1], coords_2d[2], coords_2d[3],
+                            width, height, bounds, is_normalized=True
+                        )
+                        features.append({
+                            "type": "Feature",
+                            "id": f"target_{art.id}_{idx}",
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": poly
+                            },
+                            "properties": {
+                                "feature_type": "grounded_target",
+                                "label": label,
+                                "detection_score": score,
+                                "source_artifact": art.title
+                            }
+                        })
 
         # Change Detection Areas
         if art.type == "change_map":

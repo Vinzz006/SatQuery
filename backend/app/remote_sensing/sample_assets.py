@@ -149,6 +149,76 @@ def generate_sample_satellite_assets():
     ) as dst:
         dst.write(sar, 1)
 
+    # =========================================================================
+    # 5. Dedicated ISRO SDSC Sriharikota Spaceport Benchmark (GeoTIFF)
+    # =========================================================================
+    img_spaceport = np.zeros((h, w, 3), dtype=np.uint8)
+    # Coastal vegetation & terrain background
+    img_spaceport[:] = [50, 115, 65]
+
+    # Bay of Bengal (East coast water body: x from 450 to 512)
+    img_spaceport[:, 450:] = [28, 65, 115]
+    img_spaceport[:, 440:450] = [185, 175, 145]  # Sandy beach ridge
+
+    # Buckingham Canal (West inland waterway: x from 40 to 75)
+    img_spaceport[:, 40:75] = [32, 70, 105]
+
+    # Service road and rail network
+    cv2.line(img_spaceport, (60, 250), (450, 250), (90, 88, 85), 4)
+    cv2.line(img_spaceport, (260, 50), (260, 480), (90, 88, 85), 4)
+
+    # First Launch Pad (FLP) - Sriharikota (~13.733° N, 80.235° E)
+    flp_center = (380, 170)
+    cv2.circle(img_spaceport, flp_center, 36, (140, 140, 145), -1)  # Launch apron
+    cv2.circle(img_spaceport, flp_center, 36, (60, 60, 65), 2)
+    cv2.circle(img_spaceport, flp_center, 14, (45, 45, 45), -1)    # Launch pedestal
+    cv2.line(img_spaceport, flp_center, (450, 170), (40, 40, 45), 8) # Flame trench
+    # Lightning protection towers around FLP
+    for offset in [(-30, -30), (30, -30), (0, 35)]:
+        cv2.circle(img_spaceport, (flp_center[0] + offset[0], flp_center[1] + offset[1]), 4, (240, 240, 250), -1)
+
+    # Second Launch Pad (SLP) (~13.720° N, 80.230° E)
+    slp_center = (360, 340)
+    cv2.circle(img_spaceport, slp_center, 40, (145, 145, 150), -1)
+    cv2.circle(img_spaceport, slp_center, 40, (60, 60, 65), 2)
+    cv2.circle(img_spaceport, slp_center, 16, (40, 40, 45), -1)
+    cv2.line(img_spaceport, slp_center, (450, 340), (35, 35, 40), 10) # Dual flame duct
+
+    # Vehicle Assembly Building (VAB) & Technical Complex (~13.725° N, 80.225° E)
+    vab_box = (230, 140, 65, 55)
+    cv2.rectangle(img_spaceport, (vab_box[0], vab_box[1]), (vab_box[0] + vab_box[2], vab_box[1] + vab_box[3]), (175, 170, 160), -1)
+    cv2.rectangle(img_spaceport, (vab_box[0], vab_box[1]), (vab_box[0] + vab_box[2], vab_box[1] + vab_box[3]), (50, 50, 55), 2)
+    # Rail track linking VAB to SLP
+    cv2.line(img_spaceport, (vab_box[0] + 30, vab_box[1] + 55), (slp_center[0], slp_center[1]), (75, 75, 80), 3)
+
+    # Cryogenic & Hypergolic Propellant Storage Tank Facility (~13.728° N, 80.220° E)
+    tanks = [(180, 260), (205, 260), (180, 285), (205, 285)]
+    cv2.rectangle(img_spaceport, (165, 245), (220, 300), (110, 105, 95), 2)  # Berm wall
+    for t_pos in tanks:
+        cv2.circle(img_spaceport, t_pos, 10, (220, 220, 230), -1)  # High-albedo cryogenic spheres
+        cv2.circle(img_spaceport, t_pos, 10, (50, 50, 55), 1)
+
+    # Telemetry, Tracking & Command (TTC) Radar Complex (~13.740° N, 80.220° E)
+    radar_center = (180, 100)
+    cv2.circle(img_spaceport, radar_center, 15, (230, 235, 245), -1)  # Radome dome
+    cv2.circle(img_spaceport, radar_center, 15, (70, 70, 80), 2)
+    cv2.circle(img_spaceport, (210, 100), 12, (200, 205, 215), -1)  # Secondary dish
+
+    # Save Spaceport PNG
+    Image.fromarray(img_spaceport).save(sample_dir / "sample_spaceport.png")
+
+    # Save Spaceport GeoTIFF (EPSG:4326)
+    with rasterio.open(
+        sample_dir / "isro_sdsc_spaceport.tif", 'w',
+        driver='GTiff',
+        height=h, width=w, count=3,
+        dtype=img_spaceport.dtype,
+        crs=crs_epsg,
+        transform=geo_transform
+    ) as dst:
+        for b_idx in range(3):
+            dst.write(img_spaceport[:, :, b_idx], b_idx + 1)
+
     print("Sample satellite assets (PNG & GeoTIFF EPSG:4326) successfully materialized in storage/samples.")
 
 

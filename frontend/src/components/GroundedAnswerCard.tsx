@@ -14,9 +14,10 @@ import {
 
 interface Props {
   analysis: AnalyzeResponse;
+  onFollowUpQuery?: (query: string) => void;
 }
 
-export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
+export const GroundedAnswerCard: React.FC<Props> = ({ analysis, onFollowUpQuery }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const confValue = analysis.confidence ? Math.round(analysis.confidence * 100) : 0;
 
@@ -120,11 +121,19 @@ export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
 
       {/* Physical & Remote-Sensing Statistics */}
       {analysis.statistics && Object.keys(analysis.statistics).length > 0 && (
-        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
-          <div className="flex items-center gap-1.5 text-xs font-mono text-slate-300 mb-2 font-semibold">
-            <BarChart2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span>EXTRACTED SCENE TELEMETRY</span>
+        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 space-y-3">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-300 font-semibold">
+            <div className="flex items-center gap-1.5">
+              <BarChart2 className="w-3.5 h-3.5 text-cyan-400" />
+              <span>EXTRACTED SCENE TELEMETRY</span>
+            </div>
+            {analysis.statistics.total_area_hectares && (
+              <span className="text-[11px] text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/60 font-semibold">
+                Total Target Footprint: {analysis.statistics.total_area_hectares} ha ({analysis.statistics.total_area_km2} km²)
+              </span>
+            )}
           </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
             {Object.entries(analysis.statistics).map(([key, val]) => {
               if (typeof val === 'object' || Array.isArray(val)) return null;
@@ -136,6 +145,72 @@ export const GroundedAnswerCard: React.FC<Props> = ({ analysis }) => {
               );
             })}
           </div>
+
+          {/* Detected Vector Polygons Table (Phase 14) */}
+          {Array.isArray(analysis.statistics.detected_features) && analysis.statistics.detected_features.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-800/80">
+              <div className="text-[11px] font-mono text-slate-300 uppercase tracking-wider mb-2 font-semibold flex items-center justify-between">
+                <span>Delineated Vector Polygons ({analysis.statistics.detected_features.length} features)</span>
+                <span className="text-[10px] text-slate-400 normal-case font-normal">WGS84 EPSG:4326</span>
+              </div>
+              <div className="overflow-x-auto rounded border border-slate-800">
+                <table className="w-full text-[11px] font-mono text-left">
+                  <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="p-2">Target Feature</th>
+                      <th className="p-2">Area (ha)</th>
+                      <th className="p-2">Area (km²)</th>
+                      <th className="p-2">Perimeter</th>
+                      <th className="p-2">Centroid [Lat, Lon]</th>
+                      <th className="p-2 text-right">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
+                    {analysis.statistics.detected_features.map((feat: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-slate-900/40 transition-colors">
+                        <td className="p-2 font-semibold text-cyan-300 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                          {feat.label}
+                        </td>
+                        <td className="p-2 text-emerald-300">{feat.area_hectares} ha</td>
+                        <td className="p-2 text-slate-300">{feat.area_km2} km²</td>
+                        <td className="p-2 text-slate-400">{feat.perimeter_m} m</td>
+                        <td className="p-2 text-slate-300 font-mono text-[10px]">
+                          {feat.centroid ? `${feat.centroid[0]}°, ${feat.centroid[1]}°` : '—'}
+                        </td>
+                        <td className="p-2 text-right">
+                          <span className="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/50 text-[10px]">
+                            {Math.round((feat.score || 0.85) * 100)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Follow-up Dialogue Quick Suggestions */}
+      {onFollowUpQuery && (
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[11px] font-mono text-slate-400">Follow-up:</span>
+          {[
+            "Compute vegetation health (NDVI)",
+            "Highlight water bodies & canal",
+            "What type of land cover dominates?",
+            "Detect infrastructure changes"
+          ].map((suggestion, sIdx) => (
+            <button
+              key={sIdx}
+              onClick={() => onFollowUpQuery(suggestion)}
+              className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 transition-all cursor-pointer"
+            >
+              + {suggestion}
+            </button>
+          ))}
         </div>
       )}
 

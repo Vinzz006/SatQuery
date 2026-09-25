@@ -23,7 +23,9 @@ import {
   Sparkles,
   Crosshair,
   Box,
-  Film
+  Film,
+  MessageSquare,
+  RotateCcw
 } from 'lucide-react';
 
 export const WorkspacePage: React.FC = () => {
@@ -36,7 +38,10 @@ export const WorkspacePage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [useAdaptedModel, setUseAdaptedModel] = useState<boolean>(true);
 
-  // Phase 11, 12 & 13 Advanced Controls & View Mode
+  // Phase 11, 12, 13 & 14 Advanced Controls, Session State & View Mode
+  const [sessionId, setSessionId] = useState<string>(() => 'session-' + Math.random().toString(36).substring(2, 9));
+  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; content: string; task?: string; time: string }[]>([]);
+  const [showChatHistory, setShowChatHistory] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'slider' | 'map' | '3d'>('slider');
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [thresholdFactor, setThresholdFactor] = useState<number>(1.2);
@@ -111,7 +116,23 @@ export const WorkspacePage: React.FC = () => {
                   sampleImagery.find(s => s.filename.includes('optical'));
       if (opt) setImages([opt]);
       setQuery('Generate False-Color Infrared (CIR) composite to evaluate vegetation and water boundaries.');
+    } else if (scenario === 8) {
+      // Demo 8: Spaceport Grounding & Area Analysis (True GeoTIFF)
+      const port = sampleImagery.find(s => s.filename === 'isro_sdsc_spaceport.tif') ||
+                   sampleImagery.find(s => s.filename.includes('spaceport'));
+      if (port) setImages([port]);
+      setQuery('Identify and compute the area of the launch complexes and propellant facilities.');
     }
+  };
+
+  const handleResetSession = async () => {
+    try {
+      await api.clearSession(sessionId);
+    } catch (_) {}
+    const newId = 'session-' + Math.random().toString(36).substring(2, 9);
+    setSessionId(newId);
+    setChatHistory([]);
+    setAnalysisResult(null);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,9 +178,15 @@ export const WorkspacePage: React.FC = () => {
           threshold_factor: thresholdFactor,
           sar_filter_size: sarFilterSize,
           ...(roi ? { roi } : {})
-        }
+        },
+        sessionId
       );
       setAnalysisResult(res);
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'user', content: query, time: new Date().toLocaleTimeString() },
+        { role: 'assistant', content: res.answer, task: res.task, time: new Date().toLocaleTimeString() }
+      ]);
     } catch (err: any) {
       setErrorMessage(err.response?.data?.detail || "Analysis failed. Please inspect backend logs.");
     } finally {
@@ -182,7 +209,7 @@ export const WorkspacePage: React.FC = () => {
           </p>
         </div>
 
-        {/* Demo Quick Selectors */}
+        {/* Demo Quick Selectors & Session Indicator */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono">
           <span className="text-slate-400 mr-1 hidden sm:inline">ISRO Demos:</span>
           <button
@@ -227,6 +254,37 @@ export const WorkspacePage: React.FC = () => {
           >
             Demo 7: False-Color (CIR)
           </button>
+          <button
+            onClick={() => loadDemoScenario(8)}
+            className="px-2.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800/80 hover:border-amber-600 transition-all font-semibold"
+          >
+            Demo 8: Spaceport (GeoTIFF)
+          </button>
+
+          {/* Conversational Session Status */}
+          <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-800">
+            <span className="text-[10px] text-slate-400 bg-slate-950/90 px-2 py-0.5 rounded border border-slate-800 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              {sessionId.substring(0, 12)} ({Math.floor(chatHistory.length / 2)} turns)
+            </span>
+            {chatHistory.length > 0 && (
+              <button
+                onClick={() => setShowChatHistory(!showChatHistory)}
+                className="text-[10px] px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-800 hover:border-cyan-700 transition-all flex items-center gap-1"
+                title="Toggle Multi-Turn Conversation Thread"
+              >
+                <MessageSquare className="w-3 h-3 text-cyan-400" />
+                <span>{showChatHistory ? 'Hide Thread' : 'Thread'}</span>
+              </button>
+            )}
+            <button
+              onClick={handleResetSession}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all flex items-center gap-1"
+              title="Reset Conversational Session Context"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -569,9 +627,47 @@ export const WorkspacePage: React.FC = () => {
             </div>
           )}
 
+          {/* Multi-Turn Conversational Thread Drawer (Phase 14) */}
+          {showChatHistory && chatHistory.length > 0 && (
+            <div className="glass-panel p-4 rounded-xl border border-cyan-500/30 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <span className="text-xs font-mono uppercase font-semibold text-cyan-300 flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-cyan-400" />
+                  Active Dialogue Thread ({Math.floor(chatHistory.length / 2)} Q&A Exchanges)
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  Session ID: {sessionId}
+                </span>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1 text-xs font-mono">
+                {chatHistory.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-2.5 rounded-lg border ${
+                      item.role === 'user'
+                        ? 'bg-slate-900/80 border-slate-700/80 text-cyan-200 ml-4'
+                        : 'bg-slate-950/90 border-cyan-900/40 text-slate-200 mr-4'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                      <span className="uppercase font-semibold text-cyan-400">
+                        {item.role === 'user' ? 'Operator' : `SatQuery AI (${item.task || 'Agent'})`}
+                      </span>
+                      <span>{item.time}</span>
+                    </div>
+                    <p className="leading-relaxed">{item.content}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Grounded Result Card */}
           {analysisResult && (
-            <GroundedAnswerCard analysis={analysisResult} />
+            <GroundedAnswerCard
+              analysis={analysisResult}
+              onFollowUpQuery={(followUp) => setQuery(followUp)}
+            />
           )}
 
           {/* Observable Execution Trace */}

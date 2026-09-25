@@ -108,8 +108,10 @@ def normalize_for_display(arr: np.ndarray) -> np.ndarray:
         p2, p98 = np.percentile(arr[valid_mask], (2, 98))
         if p98 > p2:
             stretched = np.clip((arr - p2) / (p98 - p2) * 255.0, 0, 255).astype(np.uint8)
+        elif arr.max() > arr.min():
+            stretched = np.clip((arr - arr.min()) / (arr.max() - arr.min()) * 255.0, 0, 255).astype(np.uint8)
         else:
-            stretched = np.zeros_like(arr, dtype=np.uint8)
+            stretched = np.clip(arr, 0, 255).astype(np.uint8)
         return stretched
 
     elif arr.ndim == 3:
@@ -124,8 +126,10 @@ def normalize_for_display(arr: np.ndarray) -> np.ndarray:
                 p2, p98 = np.percentile(ch[valid_mask], (2, 98))
                 if p98 > p2:
                     out[:, :, i] = np.clip((ch - p2) / (p98 - p2) * 255.0, 0, 255).astype(np.uint8)
+                elif ch.max() > ch.min():
+                    out[:, :, i] = np.clip((ch - ch.min()) / (ch.max() - ch.min()) * 255.0, 0, 255).astype(np.uint8)
                 else:
-                    out[:, :, i] = 0
+                    out[:, :, i] = np.clip(ch, 0, 255).astype(np.uint8)
             else:
                 out[:, :, i] = 0
         if channels_to_process == 1:
