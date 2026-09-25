@@ -1,4 +1,5 @@
 import io
+import re
 from pathlib import Path
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -110,7 +111,17 @@ def generate_pdf_report(analysis: AnalyzeResponse) -> Path:
 
     # Grounded Answer
     story.append(Paragraph("GROUNDED AI INTERPRETATION", h2_style))
-    answer_table = Table([[Paragraph(analysis.answer, answer_style)]], colWidths=[7.0 * inch])
+    safe_answer = (
+        analysis.answer
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+    safe_answer = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', safe_answer)
+    safe_answer = re.sub(r'###\s*(.*)', r'<b><font color="#0369A1">\1</font></b>', safe_answer)
+    safe_answer = safe_answer.replace("\n", "<br/>")
+
+    answer_table = Table([[Paragraph(safe_answer, answer_style)]], colWidths=[7.0 * inch])
     answer_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F0F9FF")),
         ('BOX', (0, 0), (-1, -1), 1.5, c_accent),

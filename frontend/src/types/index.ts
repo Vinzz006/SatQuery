@@ -7,6 +7,7 @@ export type TaskType =
   | 'optical_sar_analysis'
   | 'spectral_index'
   | 'band_composite'
+  | 'scene_audit'
   | 'general_remote_sensing_analysis';
 
 export type ModalityType = 'optical' | 'sar' | 'multispectral' | 'unknown';

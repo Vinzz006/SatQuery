@@ -1,21 +1,34 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
-import { ImageMetadata, EvidenceArtifact } from '../types';
+import { ImageMetadata, EvidenceArtifact, DetectedFeature } from '../types';
 import { api } from '../services/api';
-import { MapPin, Globe, Navigation, Eye, Sliders, Crop, X, Crosshair } from 'lucide-react';
+import { MapPin, Globe, Navigation, Eye, Sliders, Crop, X, Crosshair, Layers } from 'lucide-react';
 
 interface Props {
   images: ImageMetadata[];
   evidence?: EvidenceArtifact[];
+  detectedFeatures?: DetectedFeature[];
+  selectedFeatureId?: string | null;
+  onSelectFeature?: (feature: DetectedFeature) => void;
   roi?: [number, number, number, number] | null;
   onRoiChange?: (roi: [number, number, number, number] | null) => void;
 }
 
-export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [], roi, onRoiChange }) => {
+export const GeoMapViewer: React.FC<Props> = ({
+  images,
+  evidence = [],
+  detectedFeatures = [],
+  selectedFeatureId,
+  onSelectFeature,
+  roi,
+  onRoiChange
+}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const imageOverlayRef = useRef<L.ImageOverlay | null>(null);
   const evidenceOverlayRef = useRef<L.ImageOverlay | null>(null);
+  const vectorLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const featureLayersMapRef = useRef<Map<string, { poly?: L.Polygon; marker?: L.CircleMarker }>>(new Map());
   const roiRectRef = useRef<L.Rectangle | null>(null);
   const tempRectRef = useRef<L.Rectangle | null>(null);
   const drawingStartRef = useRef<L.LatLng | null>(null);
@@ -24,6 +37,7 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [], roi, onRo
   const [baseMapType, setBaseMapType] = useState<'satellite' | 'dark' | 'osm'>('satellite');
   const [evidenceOpacity, setEvidenceOpacity] = useState<number>(85);
   const [showEvidence, setShowEvidence] = useState<boolean>(true);
+  const [showVectors, setShowVectors] = useState<boolean>(true);
   const [activeEvidenceIndex, setActiveEvidenceIndex] = useState<number>(0);
   const [isDrawingRoi, setIsDrawingRoi] = useState<boolean>(false);
   const [roiActive, setRoiActive] = useState<boolean>(false);
@@ -143,6 +157,98 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [], roi, onRo
       }
     }
   }, [activeEvidence, showEvidence, evidenceOpacity, primaryImage]);
+
+  // Render and update Detected Vector Polygons
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (!vectorLayerGroupRef.current) {
+      vectorLayerGroupRef.current = L.layerGroup().addTo(map);
+    }
+    const layerGroup = vectorLayerGroupRef.current;
+    layerGroup.clearLayers();
+    featureLayersMapRef.current.clear();
+
+    if (!showVectors || !detectedFeatures || detectedFeatures.length === 0) return;
+
+    detectedFeatures.forEach((feat) => {
+      let poly: L.Polygon | undefined;
+      if (feat.polygon_coords && feat.polygon_coords.length > 2) {
+        // GeoJSON coords are [lon, lat] -> Leaflet requires [lat, lon]
+        const latLngs = feat.polygon_coords.map((pt) => [pt[1], pt[0]] as [number, number]);
+        poly = L.polygon(latLngs, {
+          color: '#06b6d4',
+          weight: 2,
+          fillColor: '#0891b2',
+          fillOpacity: 0.35
+        });
+
+        poly.bindTooltip(
+          `<b>${feat.label}</b><br/><span style="color:#38bdf8;">Area: ${feat.area_hectares} ha</span>`,
+          { sticky: true }
+        );
+
+        const popupHtml = `
+          <div style="font-family: monospace; font-size: 11px; padding: 4px; line-height: 1.5;">
+            <div style="color: #06b6d4; font-weight: bold; font-size: 12px; margin-bottom: 4px;">
+              🛰️ ${feat.label}
+            </div>
+            <div><b>Area:</b> ${feat.area_hectares} ha (${feat.area_km2} km²)</div>
+            <div><b>Perimeter:</b> ${feat.perimeter_m} m</div>
+            <div><b>Centroid:</b> ${feat.centroid ? `${feat.centroid[0]}° N, ${feat.centroid[1]}° E` : 'N/A'}</div>
+            <div><b>Detection Score:</b> ${Math.round((feat.score || 0.85) * 100)}%</div>
+          </div>
+        `;
+        poly.bindPopup(popupHtml);
+
+        poly.on('mouseover', () => {
+          poly?.setStyle({ weight: 3, fillOpacity: 0.55, color: '#38bdf8' });
+        });
+        poly.on('mouseout', () => {
+          poly?.setStyle({ weight: 2, fillOpacity: 0.35, color: '#06b6d4' });
+        });
+        poly.on('click', () => {
+          onSelectFeature?.(feat);
+        });
+
+        layerGroup.addLayer(poly);
+      }
+
+      let marker: L.CircleMarker | undefined;
+      if (feat.centroid) {
+        marker = L.circleMarker([feat.centroid[0], feat.centroid[1]], {
+          radius: 5,
+          color: '#38bdf8',
+          fillColor: '#06b6d4',
+          fillOpacity: 0.9,
+          weight: 2
+        });
+        marker.bindTooltip(`Centroid: ${feat.label}`, { direction: 'top', offset: [0, -6] });
+        marker.on('click', () => {
+          onSelectFeature?.(feat);
+          if (poly) poly.openPopup();
+        });
+        layerGroup.addLayer(marker);
+      }
+
+      featureLayersMapRef.current.set(feat.id, { poly, marker });
+    });
+  }, [detectedFeatures, showVectors, onSelectFeature]);
+
+  // Pan to selected feature when selected from table or parent
+  useEffect(() => {
+    if (!selectedFeatureId || !mapInstanceRef.current) return;
+    const entry = featureLayersMapRef.current.get(selectedFeatureId);
+    if (entry) {
+      if (entry.poly) {
+        mapInstanceRef.current.fitBounds(entry.poly.getBounds(), { maxZoom: 17, padding: [40, 40] });
+        entry.poly.openPopup();
+      } else if (entry.marker) {
+        mapInstanceRef.current.setView(entry.marker.getLatLng(), 17);
+      }
+    }
+  }, [selectedFeatureId]);
 
   // Handle ROI Interactive Drawing
   useEffect(() => {
@@ -306,6 +412,22 @@ export const GeoMapViewer: React.FC<Props> = ({ images, evidence = [], roi, onRo
                 <X className="w-3 h-3" />
               </button>
             </div>
+          )}
+
+          {/* Vectors Toggle Button */}
+          {detectedFeatures && detectedFeatures.length > 0 && (
+            <button
+              onClick={() => setShowVectors(!showVectors)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono transition-all border ${
+                showVectors
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 shadow-sm shadow-cyan-500/10'
+                  : 'bg-slate-950 hover:bg-slate-800 text-slate-400 border-slate-800'
+              }`}
+              title="Toggle Vector Polygons & Telemetry Layer"
+            >
+              <Layers className="w-3 h-3 text-cyan-400" />
+              <span>Vectors ({detectedFeatures.length})</span>
+            </button>
           )}
 
           <div className="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800">

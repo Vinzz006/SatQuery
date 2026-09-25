@@ -18,7 +18,7 @@ for folder in [STORAGE_DIR, UPLOAD_DIR, ARTIFACT_DIR, REPORTS_DIR, SAMPLE_DIR, C
 
 class Settings(BaseModel):
     PROJECT_NAME: str = "SatQuery AI"
-    VERSION: str = "1.0.0"
+    VERSION: str = "2.0.0"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = True
 

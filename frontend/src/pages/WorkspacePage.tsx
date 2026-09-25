@@ -47,6 +47,7 @@ export const WorkspacePage: React.FC = () => {
   const [thresholdFactor, setThresholdFactor] = useState<number>(1.2);
   const [sarFilterSize, setSarFilterSize] = useState<number>(5);
   const [roi, setRoi] = useState<[number, number, number, number] | null>(null);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
 
   // Load sample assets on mount
   useEffect(() => {
@@ -122,6 +123,14 @@ export const WorkspacePage: React.FC = () => {
                    sampleImagery.find(s => s.filename.includes('spaceport'));
       if (port) setImages([port]);
       setQuery('Identify and compute the area of the launch complexes and propellant facilities.');
+    } else if (scenario === 9) {
+      // Demo 9: Multi-Model Mission Audit CoT (True GeoTIFF)
+      const port = sampleImagery.find(s => s.filename === 'isro_sdsc_spaceport.tif') ||
+                   sampleImagery.find(s => s.filename.includes('spaceport')) ||
+                   sampleImagery.find(s => s.filename.includes('optical'));
+      if (port) setImages([port]);
+      setQuery('Run a comprehensive remote-sensing intelligence audit across the entire spaceport.');
+      setViewMode('map');
     }
   };
 
@@ -259,6 +268,12 @@ export const WorkspacePage: React.FC = () => {
             className="px-2.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800/80 hover:border-amber-600 transition-all font-semibold"
           >
             Demo 8: Spaceport (GeoTIFF)
+          </button>
+          <button
+            onClick={() => loadDemoScenario(9)}
+            className="px-2.5 py-1 rounded bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-700 hover:border-indigo-500 transition-all font-bold shadow-sm shadow-indigo-500/20"
+          >
+            Demo 9: Mission Audit (CoT)
           </button>
 
           {/* Conversational Session Status */}
@@ -585,6 +600,9 @@ export const WorkspacePage: React.FC = () => {
             <GeoMapViewer
               images={images}
               evidence={analysisResult?.evidence || []}
+              detectedFeatures={analysisResult?.statistics?.detected_features || []}
+              selectedFeatureId={selectedFeatureId}
+              onSelectFeature={(feat) => setSelectedFeatureId(feat.id)}
               roi={roi}
               onRoiChange={setRoi}
             />
@@ -667,6 +685,10 @@ export const WorkspacePage: React.FC = () => {
             <GroundedAnswerCard
               analysis={analysisResult}
               onFollowUpQuery={(followUp) => setQuery(followUp)}
+              onSelectFeature={(feat) => {
+                setSelectedFeatureId(feat.id);
+                setViewMode('map');
+              }}
             />
           )}
 

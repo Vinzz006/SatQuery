@@ -15,9 +15,10 @@ import {
 interface Props {
   analysis: AnalyzeResponse;
   onFollowUpQuery?: (query: string) => void;
+  onSelectFeature?: (feature: any) => void;
 }
 
-export const GroundedAnswerCard: React.FC<Props> = ({ analysis, onFollowUpQuery }) => {
+export const GroundedAnswerCard: React.FC<Props> = ({ analysis, onFollowUpQuery, onSelectFeature }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const confValue = analysis.confidence ? Math.round(analysis.confidence * 100) : 0;
 
@@ -167,9 +168,14 @@ export const GroundedAnswerCard: React.FC<Props> = ({ analysis, onFollowUpQuery 
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-950/40">
                     {analysis.statistics.detected_features.map((feat: any, idx: number) => (
-                      <tr key={idx} className="hover:bg-slate-900/40 transition-colors">
-                        <td className="p-2 font-semibold text-cyan-300 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                      <tr
+                        key={idx}
+                        onClick={() => onSelectFeature?.(feat)}
+                        className="hover:bg-cyan-950/40 cursor-pointer transition-colors group"
+                        title="Click to zoom and inspect vector polygon on GIS satellite map"
+                      >
+                        <td className="p-2 font-semibold text-cyan-300 flex items-center gap-1.5 group-hover:text-cyan-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 group-hover:animate-ping"></span>
                           {feat.label}
                         </td>
                         <td className="p-2 text-emerald-300">{feat.area_hectares} ha</td>

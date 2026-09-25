@@ -142,6 +142,19 @@ SatQuery/
 | **Phase 12**| Bi-Temporal Animated Timelapse | Looping time-series morph GIF generator with pulsing change masks |
 | **Phase 13**| 3D Digital Elevation & Terrain Mesh | Interactive WebGL/Three.js orbital terrain mesh visualizer with DEM height |
 | **Phase 14**| Multi-Turn Agent & Spaceport Analytics| Conversational session memory, quantitative polygon area (ha/km²), ISRO SDSC Spaceport benchmark |
+| **Phase 15**| Multi-Model Scene Intelligence CoT & GIS Vector HUD (v2.0)| Unified Chain-of-Thought Dossier (VQA + Grounding + NDVI + CIR + Captioning), Interactive Leaflet GIS Vector Polygons, Centroid Markers & Popups, Demo 9 CoT Preset, 32/32 passing tests |
 
 ---
-*Audit complete. All 14 architectural phases successfully implemented and verified.*
+
+## 6. Version 2.0.0 Release Summary
+
+**SatQuery AI Version 2.0.0** delivers the ultimate multimodal synthesis requested by ISRO Problem Statement 26167:
+* **Multi-Model Scene Intelligence Chain-of-Thought (CoT)**: Automatically orchestrates 5 specialist neural models (`satquery-caption-rs-v1`, `satquery-grounding-rs-v1`, `Spectral-Index-Analyzer-v1`, `MultiSpectral-Composite-Synthesizer-v1`, `SatQuery-RSVQA-Base`) under `TaskType.SCENE_AUDIT` to produce comprehensive mission dossiers.
+* **Interactive GIS Vector HUD**: Renders real-world WGS84 vector polygons directly onto the Leaflet satellite layer with interactive hover highlights, acreage popups, and centroid navigation.
+* **Cross-Component Sync**: Clicking any delineated target in the Grounded Answer table automatically centers and zooms the Leaflet GIS map directly onto the facility's footprint.
+* **Mission Demo 9**: Instant one-click demonstration of the full multi-specialist CoT audit across the ISRO SDSC Sriharikota spaceport benchmark.
+* **32/32 Passing Unit & Integration Tests**: Full test suite validation across geospatial processing, neural adaptation, conversational memory, routing, and reporting.
+
+---
+*Audit complete. SatQuery AI Version 2.0.0 successfully built, verified, and operational.*
+

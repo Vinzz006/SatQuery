@@ -1,12 +1,14 @@
-# SATQUERY AI
+# SATQUERY AI (Version 2.0.0)
 **Interactive Vision-Language Assistant for Multimodal Remote Sensing Image Analysis through Text Queries**  
-*ISRO Problem Statement 26167 Prototype*
+*ISRO Problem Statement 26167 — Version 2.0.0 (Phase 15)*
 
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/Frontend-React_19_+_TypeScript-61DAFB.svg?style=flat&logo=react)](https://react.dev)
-[![PyTorch](https://img.shields.io/badge/Deep_Learning-PyTorch_2.12-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org)
-[![Rasterio](https://img.shields.io/badge/Geospatial-Rasterio_1.5-269535.svg?style=flat)](https://rasterio.readthedocs.io)
-[![Status](https://img.shields.io/badge/ISRO_Challenge-PS_26167_Verified-blue.svg?style=flat)]()
+[![Version](https://img.shields.io/badge/Release-v2.0.0-06B6D4.svg?style=flat)](https://github.com/Vinzz006/SatQuery)
+[![Backend](https://img.shields.io/badge/Backend-FastAPI_0.115-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Frontend](https://img.shields.io/badge/Frontend-React_19_+_TypeScript-61DAFB.svg?style=flat&logo=react)](https://react.dev)
+[![Deep Learning](https://img.shields.io/badge/Deep_Learning-PyTorch_2.12-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org)
+[![Geospatial](https://img.shields.io/badge/Geospatial-Rasterio_1.5-269535.svg?style=flat)](https://rasterio.readthedocs.io)
+[![Tests](https://img.shields.io/badge/Tests-32%2F32_Passing-10B981.svg?style=flat)]()
+[![ISRO Challenge](https://img.shields.io/badge/ISRO_Challenge-PS_26167_Verified-blue.svg?style=flat)]()
 
 ---
 
@@ -16,26 +18,29 @@ SatQuery AI is a production-grade, multimodal agentic assistant designed specifi
 
 Unlike generic vision-language chatbots that suffer from severe geographic hallucination when querying satellite imagery, SatQuery AI implements an **Agentic Specialist Pipeline**:
 1. The **Agent Controller** analyzes natural language queries and input imagery (number of images, sensor modalities).
-2. The **Query Router** determines task type (`VQA`, `CAPTIONING`, `GROUNDING`, `CHANGE_DETECTION`, `CHANGE_VQA`, `OPTICAL_SAR_ANALYSIS`).
-3. Dedicated **Specialist AI Models** compute verifiable physical evidence (Radiometric Change Vector Analysis, spectral indices, Lee-filtered SAR backscatter, connected components).
+2. The **Query Router** determines task type (`VQA`, `CAPTIONING`, `GROUNDING`, `CHANGE_DETECTION`, `CHANGE_VQA`, `OPTICAL_SAR_ANALYSIS`, `SPECTRAL_INDEX`, `BAND_COMPOSITE`, `SCENE_AUDIT`).
+3. Dedicated **Specialist AI Models** compute verifiable physical evidence (Radiometric Change Vector Analysis, spectral indices, Lee-filtered SAR backscatter, connected components, vector polygon geometries).
 4. Physical metrics strictly condition the natural language generator to eliminate LLM hallucination.
 5. The system emits an **Observable Execution Trace** for transparent auditing and generates downloadable aerospace-styled PDF and JSON reports.
 
 ---
 
-## 2. Core Capabilities
+## 2. Core Capabilities (v2.0.0)
 
+* **Multi-Model Scene Intelligence Chain-of-Thought (Demo 9)**: Orchestrates 5 specialist neural models (`satquery-caption-rs-v1`, `satquery-grounding-rs-v1`, `Spectral-Index-Analyzer-v1`, `MultiSpectral-Composite-Synthesizer-v1`, `SatQuery-RSVQA-Base`) under `TaskType.SCENE_AUDIT` to produce comprehensive mission dossiers.
+* **Interactive Leaflet GIS Vector HUD**: Renders real-world WGS84 vector polygons directly onto the Leaflet satellite layer with interactive hover highlights, acreage popups, and centroid navigation.
+* **Cross-Component Sync**: Clicking any delineated target in the Grounded Answer table automatically centers and zooms the Leaflet GIS map directly onto the facility's footprint.
+* **Multi-Turn Conversational Memory**: Contextual pronoun resolution across dialogues ("it", "this area", "its area") with session isolation and persistent telemetry.
+* **Quantitative Vector Telemetry**: Computes exact surface area (Hectares and km²), perimeter in meters, and WGS84 centroid coordinates for all grounded aerospace assets.
 * **Single-Image VQA**: Visual question answering on land cover classes, object existence, infrastructure counts, and spatial distributions with calibrated softmax confidence.
 * **Live PyTorch Neural Checkpoint Inference**: Direct execution of fine-tuned EuroSAT neural weights (`adapted_rs_head.pt`) with real-time neural logits and class predictions.
 * **True Geospatial GeoTIFF Engine (EPSG:4326)**: Ingests and generates georeferenced GeoTIFFs with real Coordinate Reference Systems (CRS) and affine bounds centered over the ISRO Satish Dhawan Space Centre (SDSC SHAR, Sriharikota, India).
-* **Interactive Leaflet GIS Map Viewer**: Integrated GIS mapping with high-resolution Esri Satellite imagery, Dark Matter GIS, real-world raster overlays, and a live cursor Latitude/Longitude HUD.
 * **Remote-Sensing Captioning**: Holistic LULC descriptive summaries detailing spectral, spatial, and textural landscape compositions.
-* **Text-Guided Visual Grounding**: Natural referring expression localization (e.g. "Highlight the water body") into bounding boxes with confidence chips, binary masks, and visual overlays.
-* **Bi-Temporal Change Detection & Change-VQA**: Multi-epoch alignment, Radiometric Change Vector Analysis (CVA), adaptive Otsu thresholding with dynamic sensitivity slider controls, quantified percentage changes, and anti-hallucination Q&A.
+* **Text-Guided Visual Grounding**: Natural referring expression localization (e.g. "Highlight the launch pad", "Locate propellant tanks") into bounding boxes, binary masks, and visual overlays.
+* **Bi-Temporal Change Detection & Change-VQA**: Multi-epoch alignment, Radiometric Change Vector Analysis (CVA), adaptive Otsu thresholding with dynamic sensitivity slider controls, and looping time-series morph GIF timelapses.
 * **Optical + SAR Cross-Modal Analysis**: Synergistic fusion combining optical spectral reflectance with cloud-penetrating SAR microwave backscatter to detect structural footprints obscured by clouds.
-* **Remote-Sensing Adaptation Pipeline**: Reproducible fine-tuning and evaluation workflow (`backend/adaptation/train.py`) adapted on the EuroSAT benchmark.
-* **Auditable Telemetry**: Real-time execution trace displaying observable milestones with millisecond latency.
-* **Interactive Map / Split-Slider Studio**: Side-by-side or split swipe-slider with synchronized pan, zoom, layer toggling, and opacity adjustments.
+* **Spectral Radiometry & False-Color Composites**: NDVI/NDWI/NDBI calculation and standard Color-Infrared (CIR: NIR-Red-Green) false-color synthesis.
+* **3D Digital Elevation & Orbital Mesh**: Interactive WebGL/Three.js orbital terrain mesh visualizer with real-time solar azimuth lighting.
 
 ---
 

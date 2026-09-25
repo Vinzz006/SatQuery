@@ -18,6 +18,17 @@ class QueryRouter:
         # Route single image workflows
         if num_images == 1:
             if any(w in q_lower for w in [
+                "audit", "full audit", "scene intelligence", "comprehensive analysis",
+                "dossier", "multi-model", "complete assessment", "full mission audit",
+                "mission audit", "comprehensive remote-sensing", "comprehensive audit"
+            ]):
+                return (
+                    TaskType.SCENE_AUDIT,
+                    "scene_audit",
+                    "Single image inquiry with comprehensive multi-specialist audit intent -> Routed to Multi-Model Scene Intelligence Chain of Thought."
+                )
+
+            elif any(w in q_lower for w in [
                 "false color", "false-color", "color infrared", "cir", "color-infrared",
                 "band composite", "infrared composite", "agriculture composite", "moisture composite",
                 "render cir", "show cir"
